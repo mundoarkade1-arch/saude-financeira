@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,6 +24,9 @@ interface FinanceDao {
 
     @Insert
     suspend fun insertBill(bill: BillEntity): Long
+
+    @Update
+    suspend fun updateBill(bill: BillEntity)
 
     @Delete
     suspend fun deleteBill(bill: BillEntity)

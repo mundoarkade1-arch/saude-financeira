@@ -49,4 +49,8 @@ object InstallmentCalc {
 
     fun monthlyTotal(items: List<InstallmentEntity>, month: YearMonth): Long =
         items.sumOf { status(it, month).monthlyCents }
+
+    /** Mês da última parcela entre todas as compras (null se não houver nenhuma). */
+    fun lastMonth(items: List<InstallmentEntity>): YearMonth? =
+        items.maxOfOrNull { YearMonth.of(it.firstYear, it.firstMonth).plusMonths((it.installments - 1).toLong()) }
 }
