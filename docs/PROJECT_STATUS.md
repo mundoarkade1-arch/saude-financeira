@@ -17,7 +17,13 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 3 (entregue, aguardando build)
+## Etapa 4 (entregue, aguardando build): atualizador dentro do app
+- Consulta `releases/latest` (repo público), compara versionCode (último número da tag), baixa o APK, confere SHA-256 do `SHA256SUMS.txt` e abre o instalador (usuário sempre confirma).
+- Permissões novas: INTERNET, REQUEST_INSTALL_PACKAGES. FileProvider em cache/updates.
+- Verificação automática ao abrir; aviso na tela Início; tela Ajustes com o fluxo.
+- A primeira versão com atualizador precisa ser instalada manualmente.
+
+## Etapa 3 (validada)
 - UI modernizada (cards, degradê, barras de progresso, tema completo claro/escuro).
 - Tela Contas (fixas/variáveis, adicionar/editar/excluir com confirmação).
 - Tela Parcelas (valor total ou da parcela, parcela atual, progresso, término).
@@ -26,11 +32,9 @@
 ## Próximas tarefas
 1. Confirmar que o workflow `Build` fica verde.
 2. Telas Contas (fixas/variáveis com lançamento mensal e média) e Parcelas (item/valor/nº de parcelas/mês inicial, barra de progresso).
-3. Assinatura release + publicação em Releases.
 4. Exportar/importar backup.
 5. Ajustes (tema, categorias).
 
 ## Problemas conhecidos
-- Tela Ajustes é provisória.
 - Parcelas ainda não têm edição (excluir e recriar).
 - Contas variáveis guardam só o valor do mês atual (sem histórico/média ainda).

@@ -14,8 +14,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -24,10 +26,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import br.com.saudefinanceira.data.FinanceDao
 import br.com.saudefinanceira.ui.screens.BillsScreen
-import br.com.saudefinanceira.ui.screens.ComingSoonScreen
 import br.com.saudefinanceira.ui.screens.HomeScreen
 import br.com.saudefinanceira.ui.screens.InstallmentsScreen
+import br.com.saudefinanceira.ui.screens.SettingsScreen
 import br.com.saudefinanceira.ui.screens.TipsScreen
+import br.com.saudefinanceira.update.UpdateInfo
+import br.com.saudefinanceira.update.UpdateState
+import br.com.saudefinanceira.update.UpdateViewModel
 
 enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Home("inicio", "Início", Icons.Filled.Home),
@@ -48,6 +53,18 @@ private fun NavHostController.goTo(route: String) {
 @Composable
 fun AppRoot(dao: FinanceDao) {
     val vm: FinanceViewModel = viewModel(factory = FinanceViewModel.Factory(dao))
+    val updateVm: UpdateViewModel = viewModel()
+    val updateState by updateVm.state.collectAsStateWithLifecycle()
+    val pendingUpdate: UpdateInfo? = when (val u = updateState) {
+        is UpdateState.Available -> u.info
+        is UpdateState.Downloading -> u.info
+        is UpdateState.Ready -> u.info
+        else -> null
+    }
+
+    // Verificação automática (silenciosa) ao abrir o app.
+    LaunchedEffect(Unit) { updateVm.check(silent = true) }
+
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
@@ -68,11 +85,18 @@ fun AppRoot(dao: FinanceDao) {
         },
     ) { padding: PaddingValues ->
         NavHost(nav, startDestination = Dest.Home.route) {
-            composable(Dest.Home.route) { HomeScreen(vm, padding, onOpenTips = { nav.goTo(Dest.Tips.route) }) }
+            composable(Dest.Home.route) {
+                HomeScreen(
+                    vm, padding,
+                    onOpenTips = { nav.goTo(Dest.Tips.route) },
+                    pendingUpdate = pendingUpdate,
+                    onOpenSettings = { nav.goTo(Dest.Settings.route) },
+                )
+            }
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }
             composable(Dest.Installments.route) { InstallmentsScreen(vm, padding) }
             composable(Dest.Tips.route) { TipsScreen(vm, padding) }
-            composable(Dest.Settings.route) { ComingSoonScreen("Ajustes", padding) }
+            composable(Dest.Settings.route) { SettingsScreen(updateVm, padding) }
         }
     }
 }

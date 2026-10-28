@@ -43,6 +43,7 @@ import br.com.saudefinanceira.ui.components.MoneyField
 import br.com.saudefinanceira.ui.components.ScreenHeader
 import br.com.saudefinanceira.ui.components.monthLabel
 import br.com.saudefinanceira.ui.theme.BrandGradient
+import br.com.saudefinanceira.update.UpdateInfo
 import br.com.saudefinanceira.util.Money
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -51,7 +52,13 @@ import java.util.Locale
 private val ptBR = Locale("pt", "BR")
 
 @Composable
-fun HomeScreen(vm: FinanceViewModel, padding: PaddingValues, onOpenTips: () -> Unit) {
+fun HomeScreen(
+    vm: FinanceViewModel,
+    padding: PaddingValues,
+    onOpenTips: () -> Unit,
+    pendingUpdate: UpdateInfo?,
+    onOpenSettings: () -> Unit,
+) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
@@ -81,6 +88,18 @@ fun HomeScreen(vm: FinanceViewModel, padding: PaddingValues, onOpenTips: () -> U
         }
 
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (pendingUpdate != null) {
+                AppCard(Modifier.fillMaxWidth(), onClick = onOpenSettings) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Nova versão disponível", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${pendingUpdate.tag} — toque aqui para atualizar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("Fixas", Money.format(s.fixedCents), Modifier.weight(1f))
                 StatCard("Variáveis", Money.format(s.variableCents), Modifier.weight(1f))
