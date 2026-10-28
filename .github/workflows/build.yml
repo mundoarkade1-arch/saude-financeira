@@ -1,56 +1,45 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
-}
+name: Build
 
-android {
-    namespace = "br.com.saudefinanceira"
-    compileSdk = 34
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 
-    defaultConfig {
-        applicationId = "br.com.saudefinanceira"
-        minSdk = 26
-        targetSdk = 34
-        // O workflow define estes valores; localmente usa o padrão.
-        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = System.getenv("APP_VERSION_NAME") ?: "0.1.0"
-    }
+permissions:
+  contents: read
 
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
-    }
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions { jvmTarget = "17" }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
 
-    buildFeatures { compose = true }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
 
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-}
+      - uses: android-actions/setup-android@v3
 
-dependencies {
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.3")
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
 
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+      - name: Testes e build (debug)
+        run: gradle --no-daemon testDebugUnitTest assembleDebug
+        env:
+          APP_VERSION_CODE: ${{ github.run_number }}
+          APP_VERSION_NAME: 0.1.${{ github.run_number }}
 
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    testImplementation("junit:junit:4.13.2")
-}
+      - name: Guardar APK de teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: saude-financeira-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
