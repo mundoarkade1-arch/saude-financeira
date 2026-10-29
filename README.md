@@ -7,6 +7,7 @@ App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira.
 - **Contas:** fixas (por tempo indeterminado) e variáveis (luz, água, gasolina, mercado) com histórico mensal, média e tendência.
 - **Parcelas:** compras parceladas com parcela atual calculada automaticamente, progresso, valor restante e mês final.
 - **Dicas:** regra 50/30/20, alerta de compromissos, reserva de emergência e contas em alta (calculadas no aparelho).
+- **Metas:** metas de economia (como a reserva de emergência sugerida a partir dos seus gastos), com progresso e mês estimado para concluir.
 - **Lembretes:** notificação diária (por volta das 9h) das contas com dia de vencimento, no dia ou com 1 ou 3 dias de antecedência.
 - **Backup:** exportar e restaurar em arquivo JSON (sem criptografia).
 - **Atualização:** verifica a última Release do GitHub, baixa, confere o SHA-256 e abre o instalador do Android.

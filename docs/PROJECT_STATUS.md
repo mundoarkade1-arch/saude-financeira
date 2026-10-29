@@ -17,7 +17,12 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 6 (entregue, aguardando build): lembretes de vencimento
+## Etapa 7 (entregue, aguardando build): metas de economia
+- Banco v3 (migração 2->3 cria `goals`; dados preservados). Backup inclui metas (backups antigos continuam válidos).
+- Aba Dicas ganhou abas Dicas/Metas: criar/editar/excluir meta, guardar/retirar valor, reserva de emergência sugerida (6x gastos essenciais), prazo estimado pela sobra prevista.
+- Testes: `GoalCalcTest`.
+
+## Etapa 6 (validada): lembretes de vencimento
 - WorkManager (work-runtime-ktx 2.9.0) agenda verificação diária ~9h; notifica contas com dueDay (hoje ou 1/3 dias antes), sem repetir o mesmo vencimento.
 - Permissão POST_NOTIFICATIONS pedida só ao ativar. Ajustes: chave, antecedência e botão de teste.
 - Parcelas não têm dia de vencimento, então não geram lembrete.

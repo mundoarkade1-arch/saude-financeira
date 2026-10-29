@@ -16,17 +16,19 @@ object Backup {
         val bills: List<BillEntity>,
         val installments: List<InstallmentEntity>,
         val entries: List<BillEntryEntity>,
+        val goals: List<GoalEntity> = emptyList(),
     )
 
     suspend fun snapshot(db: AppDatabase): Data {
         val d = db.dao()
-        return Data(d.getIncome(), d.getBills(), d.getInstallments(), d.getEntries())
+        return Data(d.getIncome(), d.getBills(), d.getInstallments(), d.getEntries(), d.getGoals())
     }
 
     suspend fun replaceAll(db: AppDatabase, data: Data) {
         db.withTransaction {
             val d = db.dao()
             d.clearEntries()
+            d.clearGoals()
             d.clearBills()
             d.clearInstallments()
             d.clearIncome()
@@ -34,6 +36,7 @@ object Backup {
             d.insertBills(data.bills)
             d.insertInstallments(data.installments)
             d.insertEntries(data.entries)
+            d.insertGoals(data.goals)
         }
     }
 
@@ -72,6 +75,15 @@ object Backup {
                     JSONObject()
                         .put("id", it.id).put("billId", it.billId).put("year", it.year)
                         .put("month", it.month).put("amountCents", it.amountCents)
+                )
+            }
+        })
+        root.put("goals", JSONArray().also { arr ->
+            data.goals.forEach {
+                arr.put(
+                    JSONObject()
+                        .put("id", it.id).put("name", it.name)
+                        .put("targetCents", it.targetCents).put("savedCents", it.savedCents)
                 )
             }
         })
@@ -134,6 +146,17 @@ object Backup {
             )
         }
 
+        // Backups antigos (sem metas) continuam válidos.
+        val goals = (root.optJSONArray("goals")?.objects() ?: emptyList()).map {
+            GoalEntity(
+                id = it.getLong("id"),
+                name = it.getString("name").also(::checkText),
+                targetCents = it.getLong("targetCents").also(::checkCents),
+                savedCents = it.getLong("savedCents").also(::checkCents),
+            )
+        }
+
+        require(goals.map { it.id }.toSet().size == goals.size) { "IDs repetidos." }
         require(income.map { it.id }.toSet().size == income.size) { "IDs repetidos." }
         require(bills.map { it.id }.toSet().size == bills.size) { "IDs repetidos." }
         require(installments.map { it.id }.toSet().size == installments.size) { "IDs repetidos." }
@@ -141,6 +164,6 @@ object Backup {
         val billIds = bills.map { it.id }.toSet()
         require(entries.all { it.billId in billIds }) { "Histórico sem conta correspondente." }
         require(entries.map { Triple(it.billId, it.year, it.month) }.toSet().size == entries.size) { "Histórico repetido." }
-        return Data(income, bills, installments, entries)
+        return Data(income, bills, installments, entries, goals)
     }
 }

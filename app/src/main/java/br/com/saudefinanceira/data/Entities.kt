@@ -47,3 +47,12 @@ data class BillEntryEntity(
     val month: Int,
     val amountCents: Long,
 )
+
+/** Meta de economia (ex.: reserva de emergência). */
+@Entity(tableName = "goals")
+data class GoalEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val targetCents: Long,
+    val savedCents: Long,
+)

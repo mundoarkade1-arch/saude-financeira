@@ -87,4 +87,26 @@ interface FinanceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntries(list: List<BillEntryEntity>)
+
+    // ---- metas ----
+    @Query("SELECT * FROM goals ORDER BY id")
+    fun observeGoals(): Flow<List<GoalEntity>>
+
+    @Insert
+    suspend fun insertGoal(goal: GoalEntity): Long
+
+    @Update
+    suspend fun updateGoal(goal: GoalEntity)
+
+    @Delete
+    suspend fun deleteGoal(goal: GoalEntity)
+
+    @Query("SELECT * FROM goals")
+    suspend fun getGoals(): List<GoalEntity>
+
+    @Query("DELETE FROM goals")
+    suspend fun clearGoals()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGoals(list: List<GoalEntity>)
 }

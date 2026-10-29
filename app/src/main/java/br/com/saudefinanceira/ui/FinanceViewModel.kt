@@ -7,6 +7,7 @@ import br.com.saudefinanceira.data.AppDatabase
 import br.com.saudefinanceira.data.BillEntity
 import br.com.saudefinanceira.data.BillEntryEntity
 import br.com.saudefinanceira.data.BillType
+import br.com.saudefinanceira.data.GoalEntity
 import br.com.saudefinanceira.data.IncomeEntity
 import br.com.saudefinanceira.data.InstallmentEntity
 import br.com.saudefinanceira.domain.BillStatsCalc
@@ -43,6 +44,9 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
 
     val entries: StateFlow<List<BillEntryEntity>> =
         dao.observeEntries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val goals: StateFlow<List<GoalEntity>> =
+        dao.observeGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Contas variáveis que subiram 15% ou mais em relação à média anterior (nome, %). */
     val risingBills: StateFlow<List<Pair<String, Int>>> = combine(
@@ -84,6 +88,21 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
 
     fun deleteInstallment(item: InstallmentEntity) {
         viewModelScope.launch { dao.deleteInstallment(item) }
+    }
+
+    fun saveGoal(goal: GoalEntity) {
+        viewModelScope.launch { if (goal.id == 0L) dao.insertGoal(goal) else dao.updateGoal(goal) }
+    }
+
+    fun deleteGoal(goal: GoalEntity) {
+        viewModelScope.launch { dao.deleteGoal(goal) }
+    }
+
+    /** [deltaCents] positivo guarda, negativo retira. O valor guardado nunca fica negativo. */
+    fun addToGoal(goal: GoalEntity, deltaCents: Long) {
+        viewModelScope.launch {
+            dao.updateGoal(goal.copy(savedCents = (goal.savedCents + deltaCents).coerceAtLeast(0L)))
+        }
     }
 
     class Factory(private val db: AppDatabase) : ViewModelProvider.Factory {
