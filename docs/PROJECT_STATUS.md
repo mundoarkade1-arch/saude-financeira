@@ -17,7 +17,11 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 7 (entregue, aguardando build): metas de economia
+## Etapa 8 (entregue, aguardando build): "Para onde vai seu dinheiro"
+- Cartão na tela Início: barra de composição (fixas/variáveis/parcelas/sobra) e 5 maiores gastos com % da renda. Sem mudança de banco.
+- Testes: `SpendingBreakdownTest`.
+
+## Etapa 7 (validada): metas de economia
 - Banco v3 (migração 2->3 cria `goals`; dados preservados). Backup inclui metas (backups antigos continuam válidos).
 - Aba Dicas ganhou abas Dicas/Metas: criar/editar/excluir meta, guardar/retirar valor, reserva de emergência sugerida (6x gastos essenciais), prazo estimado pela sobra prevista.
 - Testes: `GoalCalcTest`.

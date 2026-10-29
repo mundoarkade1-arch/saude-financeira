@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saudefinanceira.data.InstallmentEntity
 import br.com.saudefinanceira.domain.InstallmentCalc
+import br.com.saudefinanceira.domain.SpendingBreakdown
 import br.com.saudefinanceira.domain.TipEngine
 import br.com.saudefinanceira.domain.TipLevel
 import br.com.saudefinanceira.ui.FinanceViewModel
@@ -61,6 +62,7 @@ fun HomeScreen(
 ) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
+    val bills by vm.bills.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
 
     val now = YearMonth.now()
@@ -114,6 +116,8 @@ fun HomeScreen(
                     TextButton(onClick = onOpenTips) { Text("Ver todas as dicas") }
                 }
             }
+
+            SpendingCard(s, SpendingBreakdown.items(bills, installments, now))
 
             ProjectionCard(installments, now)
 
