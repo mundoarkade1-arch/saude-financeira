@@ -1,6 +1,7 @@
 package br.com.saudefinanceira.data
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class BillType { FIXED, VARIABLE }
@@ -12,7 +13,7 @@ data class IncomeEntity(
     val amountCents: Long,
 )
 
-/** FIXED: valor fixo por tempo indeterminado. VARIABLE: valor estimado/médio do mês. */
+/** FIXED: valor fixo por tempo indeterminado. VARIABLE: valor do mês mais recente informado. */
 @Entity(tableName = "bills")
 data class BillEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -32,4 +33,17 @@ data class InstallmentEntity(
     val firstYear: Int,
     val firstMonth: Int,
     val card: String? = null,
+)
+
+/** Histórico mensal das contas variáveis (uma linha por conta e mês). */
+@Entity(
+    tableName = "bill_entries",
+    indices = [Index(value = ["billId", "year", "month"], unique = true)],
+)
+data class BillEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val billId: Long,
+    val year: Int,
+    val month: Int,
+    val amountCents: Long,
 )

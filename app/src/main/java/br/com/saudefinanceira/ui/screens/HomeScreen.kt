@@ -66,7 +66,8 @@ fun HomeScreen(
     val now = YearMonth.now()
     val monthName = now.month.getDisplayName(TextStyle.FULL, ptBR)
     val committed = if (s.incomeCents > 0) s.spentCents.toFloat() / s.incomeCents else 0f
-    val tips = TipEngine.generate(s)
+    val rising by vm.risingBills.collectAsStateWithLifecycle()
+    val tips = TipEngine.generate(s, rising)
     val highlight = tips.firstOrNull { it.level != TipLevel.INFO } ?: tips.first()
 
     Column(

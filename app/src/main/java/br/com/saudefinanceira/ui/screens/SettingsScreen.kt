@@ -1,5 +1,8 @@
 package br.com.saudefinanceira.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,11 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,18 +31,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.saudefinanceira.ui.BackupViewModel
 import br.com.saudefinanceira.ui.components.AppCard
 import br.com.saudefinanceira.ui.components.GradientProgress
 import br.com.saudefinanceira.ui.components.ScreenHeader
 import br.com.saudefinanceira.update.Installer
 import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.update.UpdateViewModel
+import java.time.LocalDate
 
 @Composable
-fun SettingsScreen(update: UpdateViewModel, padding: PaddingValues) {
+fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: PaddingValues) {
     val st by update.state.collectAsStateWithLifecycle()
+    val backupMessage by backup.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var permissionHint by remember { mutableStateOf(false) }
+    var pendingImport by remember { mutableStateOf<Uri?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) backup.export(uri)
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) pendingImport = uri
+    }
 
     Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState())) {
         ScreenHeader(title = "Ajustes", caption = "Versão instalada: ${update.installedName}")
@@ -108,14 +124,51 @@ fun SettingsScreen(update: UpdateViewModel, padding: PaddingValues) {
             }
 
             AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Backup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Salve seus dados em um arquivo (por exemplo no Google Drive) para restaurar em outro aparelho. " +
+                            "O arquivo não é criptografado: guarde em local seguro.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Button(
+                        onClick = { backup.clearMessage(); exportLauncher.launch("saude-financeira-backup-${LocalDate.now()}.json") },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Salvar backup") }
+                    OutlinedButton(
+                        onClick = { backup.clearMessage(); importLauncher.launch(arrayOf("*/*")) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Restaurar backup") }
+                    backupMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+
+            AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Privacidade", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Privacidade e avisos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
                         "Seus dados financeiros ficam somente neste aparelho. A internet é usada apenas para consultar e baixar atualizações no GitHub.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    Text(
+                        "As dicas são orientações gerais calculadas a partir dos números que você informa e não substituem um profissional de finanças.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
+    }
+
+    pendingImport?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text("Restaurar backup?") },
+            text = { Text("Todos os dados atuais do app serão substituídos pelos do arquivo. Se quiser guardar os atuais, salve um backup antes.") },
+            confirmButton = { TextButton(onClick = { backup.import(uri); pendingImport = null }) { Text("Restaurar") } },
+            dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("Cancelar") } },
+        )
     }
 }

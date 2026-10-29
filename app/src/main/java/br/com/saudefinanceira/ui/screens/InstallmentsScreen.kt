@@ -50,6 +50,7 @@ import java.time.YearMonth
 fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val items by vm.installments.collectAsStateWithLifecycle()
     var creating by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<InstallmentEntity?>(null) }
     var deleting by remember { mutableStateOf<InstallmentEntity?>(null) }
 
     val now = YearMonth.now()
@@ -75,7 +76,7 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(rows, key = { it.first.id }) { (item, st) ->
-                        InstallmentCard(item, st, onDelete = { deleting = item })
+                        InstallmentCard(item, st, onClick = { editing = item }, onDelete = { deleting = item })
                     }
                 }
             }
@@ -87,7 +88,10 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     }
 
     if (creating) {
-        InstallmentDialog(onDismiss = { creating = false }, onSave = { vm.saveInstallment(it); creating = false })
+        InstallmentDialog(null, onDismiss = { creating = false }, onSave = { vm.saveInstallment(it); creating = false })
+    }
+    editing?.let { item ->
+        InstallmentDialog(item, onDismiss = { editing = null }, onSave = { vm.saveInstallment(it); editing = null })
     }
     deleting?.let { item ->
         AlertDialog(
@@ -101,7 +105,7 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 }
 
 @Composable
-private fun InstallmentCard(item: InstallmentEntity, st: InstallmentStatus, onDelete: () -> Unit) {
+private fun InstallmentCard(item: InstallmentEntity, st: InstallmentStatus, onClick: () -> Unit, onDelete: () -> Unit) {
     val first = YearMonth.of(item.firstYear, item.firstMonth)
     val last = first.plusMonths((item.installments - 1).toLong())
     val fraction = if (st.notStarted) 0f else st.current.toFloat() / st.total
@@ -113,7 +117,7 @@ private fun InstallmentCard(item: InstallmentEntity, st: InstallmentStatus, onDe
     val parcel = if (st.monthlyCents > 0) st.monthlyCents
     else InstallmentCalc.parcelAmount(item.totalCents, item.installments, 1)
 
-    AppCard(Modifier.fillMaxWidth()) {
+    AppCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -141,18 +145,23 @@ private fun InstallmentCard(item: InstallmentEntity, st: InstallmentStatus, onDe
 }
 
 @Composable
-private fun InstallmentDialog(onDismiss: () -> Unit, onSave: (InstallmentEntity) -> Unit) {
-    var description by remember { mutableStateOf("") }
+private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, onSave: (InstallmentEntity) -> Unit) {
+    val now = YearMonth.now()
+    val st = item?.let { InstallmentCalc.status(it, now) }
+    // Compras que ainda não começaram ou já terminaram mantêm o mês de início original.
+    val lockStart = st != null && (st.notStarted || st.finished)
+
+    var description by remember { mutableStateOf(item?.description ?: "") }
     var byParcel by remember { mutableStateOf(false) }
-    var amount by remember { mutableStateOf("") }
-    var parcels by remember { mutableStateOf("") }
-    var current by remember { mutableStateOf("1") }
-    var card by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf(item?.let { Money.formatPlain(it.totalCents) } ?: "") }
+    var parcels by remember { mutableStateOf(item?.installments?.toString() ?: "") }
+    var current by remember { mutableStateOf(st?.current?.coerceAtLeast(1)?.toString() ?: "1") }
+    var card by remember { mutableStateOf(item?.card ?: "") }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nova compra parcelada") },
+        title = { Text(if (item == null) "Nova compra parcelada" else "Editar compra parcelada") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -172,7 +181,9 @@ private fun InstallmentDialog(onDismiss: () -> Unit, onSave: (InstallmentEntity)
                     label = if (byParcel) "Valor de cada parcela (R$)" else "Valor total (R$)",
                 )
                 NumberField(parcels, { parcels = it; error = null }, "Número de parcelas")
-                NumberField(current, { current = it; error = null }, "Em qual parcela você está agora?")
+                if (!lockStart) {
+                    NumberField(current, { current = it; error = null }, "Em qual parcela você está agora?")
+                }
                 OutlinedTextField(
                     value = card,
                     onValueChange = { card = it },
@@ -187,7 +198,7 @@ private fun InstallmentDialog(onDismiss: () -> Unit, onSave: (InstallmentEntity)
             TextButton(onClick = {
                 val cents = Money.parse(amount)
                 val n = parcels.toIntOrNull()
-                val cur = current.toIntOrNull()
+                val cur = if (lockStart) 1 else current.toIntOrNull()
                 if (description.isBlank()) {
                     error = "Informe o que foi comprado."
                 } else if (cents == null || cents <= 0L) {
@@ -197,9 +208,13 @@ private fun InstallmentDialog(onDismiss: () -> Unit, onSave: (InstallmentEntity)
                 } else if (cur == null || cur < 1 || cur > n) {
                     error = "A parcela atual deve estar entre 1 e $n."
                 } else {
-                    val first = YearMonth.now().minusMonths((cur - 1).toLong())
+                    val first = if (lockStart && item != null) YearMonth.of(item.firstYear, item.firstMonth)
+                    else now.minusMonths((cur - 1).toLong())
+                    val base = item ?: InstallmentEntity(
+                        description = "", totalCents = 0L, installments = 1, firstYear = first.year, firstMonth = first.monthValue,
+                    )
                     onSave(
-                        InstallmentEntity(
+                        base.copy(
                             description = description.trim(),
                             totalCents = if (byParcel) cents * n else cents,
                             installments = n,

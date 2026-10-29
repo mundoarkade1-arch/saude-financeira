@@ -37,22 +37,30 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saudefinanceira.data.BillEntity
 import br.com.saudefinanceira.data.BillType
+import br.com.saudefinanceira.domain.BillStats
+import br.com.saudefinanceira.domain.BillStatsCalc
 import br.com.saudefinanceira.ui.FinanceViewModel
 import br.com.saudefinanceira.ui.components.AppCard
 import br.com.saudefinanceira.ui.components.EmptyState
 import br.com.saudefinanceira.ui.components.MoneyField
 import br.com.saudefinanceira.ui.components.NumberField
 import br.com.saudefinanceira.ui.components.ScreenHeader
+import br.com.saudefinanceira.ui.components.monthLabel
 import br.com.saudefinanceira.util.Money
+import java.time.YearMonth
+import kotlin.math.abs
 
 @Composable
 fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val bills by vm.bills.collectAsStateWithLifecycle()
+    val entries by vm.entries.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
     var creating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<BillEntity?>(null) }
     var deleting by remember { mutableStateOf<BillEntity?>(null) }
 
+    val now = YearMonth.now()
+    val byBill = entries.groupBy { it.billId }
     val type = if (tab == 0) BillType.FIXED else BillType.VARIABLE
     val list = bills.filter { it.type == type }
     val total = list.sumOf { it.amountCents }
@@ -81,7 +89,10 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(list, key = { it.id }) { bill ->
-                        BillRow(bill, onClick = { editing = bill }, onDelete = { deleting = bill })
+                        val stats = if (bill.type == BillType.VARIABLE) {
+                            BillStatsCalc.compute(byBill[bill.id].orEmpty(), now)
+                        } else null
+                        BillRow(bill, stats, onClick = { editing = bill }, onDelete = { deleting = bill })
                     }
                 }
             }
@@ -102,7 +113,7 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
         AlertDialog(
             onDismissRequest = { deleting = null },
             title = { Text("Excluir conta?") },
-            text = { Text("\"${b.name}\" será removida. Isso não pode ser desfeito.") },
+            text = { Text("\"${b.name}\" e o histórico dela serão removidos. Isso não pode ser desfeito.") },
             confirmButton = { TextButton(onClick = { vm.deleteBill(b); deleting = null }) { Text("Excluir") } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancelar") } },
         )
@@ -110,19 +121,46 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 }
 
 @Composable
-private fun BillRow(bill: BillEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+private fun BillRow(bill: BillEntity, stats: BillStats?, onClick: () -> Unit, onDelete: () -> Unit) {
     AppCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(bill.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
                     bill.dueDay?.let { "Vence dia $it" } ?: "Sem vencimento definido",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (stats != null) {
+                    if (stats.months >= 2) {
+                        Text(
+                            "Média (${stats.months} meses): ${Money.format(stats.averageCents)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    val trend = stats.trendPercent
+                    if (trend != null && abs(trend) >= 1) {
+                        val up = trend > 0
+                        Text(
+                            (if (up) "↑ $trend% acima" else "↓ ${abs(trend)}% abaixo") + " dos meses anteriores",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (up) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    val stale = stats.staleSince
+                    if (stale != null) {
+                        Text(
+                            "Valor de ${monthLabel(stale)}. Toque para atualizar este mês.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        )
+                    }
+                }
             }
             Text(Money.format(bill.amountCents), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Excluir") }

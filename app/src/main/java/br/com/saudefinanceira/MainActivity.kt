@@ -9,10 +9,10 @@ import br.com.saudefinanceira.ui.theme.SaudeFinanceiraTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val dao = (application as FinanceApp).db.dao()
+        val db = (application as FinanceApp).db
         setContent {
             SaudeFinanceiraTheme {
-                AppRoot(dao)
+                AppRoot(db)
             }
         }
     }

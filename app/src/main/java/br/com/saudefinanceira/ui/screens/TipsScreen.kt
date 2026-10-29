@@ -27,10 +27,11 @@ import br.com.saudefinanceira.ui.components.ScreenHeader
 @Composable
 fun TipsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
-    val tips = TipEngine.generate(s)
+    val rising by vm.risingBills.collectAsStateWithLifecycle()
+    val tips = TipEngine.generate(s, rising)
 
     Column(Modifier.fillMaxSize().padding(padding)) {
-        ScreenHeader(title = "Dicas para você", caption = "Calculadas no seu aparelho, com base nos seus números")
+        ScreenHeader(title = "Dicas para você", caption = "Orientações gerais calculadas no seu aparelho. Não substituem um profissional.")
         LazyColumn(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),

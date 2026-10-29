@@ -24,7 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import br.com.saudefinanceira.data.FinanceDao
+import br.com.saudefinanceira.data.AppDatabase
 import br.com.saudefinanceira.ui.screens.BillsScreen
 import br.com.saudefinanceira.ui.screens.HomeScreen
 import br.com.saudefinanceira.ui.screens.InstallmentsScreen
@@ -51,9 +51,10 @@ private fun NavHostController.goTo(route: String) {
 }
 
 @Composable
-fun AppRoot(dao: FinanceDao) {
-    val vm: FinanceViewModel = viewModel(factory = FinanceViewModel.Factory(dao))
+fun AppRoot(db: AppDatabase) {
+    val vm: FinanceViewModel = viewModel(factory = FinanceViewModel.Factory(db))
     val updateVm: UpdateViewModel = viewModel()
+    val backupVm: BackupViewModel = viewModel()
     val updateState by updateVm.state.collectAsStateWithLifecycle()
     val pendingUpdate: UpdateInfo? = when (val u = updateState) {
         is UpdateState.Available -> u.info
@@ -96,7 +97,7 @@ fun AppRoot(dao: FinanceDao) {
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }
             composable(Dest.Installments.route) { InstallmentsScreen(vm, padding) }
             composable(Dest.Tips.route) { TipsScreen(vm, padding) }
-            composable(Dest.Settings.route) { SettingsScreen(updateVm, padding) }
+            composable(Dest.Settings.route) { SettingsScreen(updateVm, backupVm, padding) }
         }
     }
 }

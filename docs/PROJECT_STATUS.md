@@ -17,7 +17,13 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 4 (entregue, aguardando build): atualizador dentro do app
+## Etapa 5 (entregue, aguardando build): versão completa
+- Banco v2 (migração 1->2 cria `bill_entries`; dados preservados). Histórico mensal, média e tendência das contas variáveis.
+- Edição de parcelas. Backup/restauração em JSON (validação antes de alterar o banco; transação).
+- Dica "conta em alta" (>=15% acima da média anterior). Tela Ajustes completa.
+- Pendência de teste: backup/restore não tem teste automatizado (org.json não roda em teste JVM sem dependência extra).
+
+## Etapa 4 (validada): atualizador dentro do app
 - Consulta `releases/latest` (repo público), compara versionCode (último número da tag), baixa o APK, confere SHA-256 do `SHA256SUMS.txt` e abre o instalador (usuário sempre confirma).
 - Permissões novas: INTERNET, REQUEST_INSTALL_PACKAGES. FileProvider em cache/updates.
 - Verificação automática ao abrir; aviso na tela Início; tela Ajustes com o fluxo.

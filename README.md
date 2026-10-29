@@ -1,6 +1,20 @@
 # Saúde Financeira
 
-App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira: renda, contas fixas e variáveis, compras parceladas com controle da parcela atual e dicas personalizadas.
+App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira.
 
-- 100% offline: os dados ficam somente no aparelho. O app não pede nenhuma permissão.
-- Status e próximos passos: [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)
+## Recursos
+- **Início:** sobra prevista do mês, % da renda comprometida, projeção das parcelas dos próximos 6 meses e dica em destaque.
+- **Contas:** fixas (por tempo indeterminado) e variáveis (luz, água, gasolina, mercado) com histórico mensal, média e tendência.
+- **Parcelas:** compras parceladas com parcela atual calculada automaticamente, progresso, valor restante e mês final.
+- **Dicas:** regra 50/30/20, alerta de compromissos, reserva de emergência e contas em alta (calculadas no aparelho).
+- **Backup:** exportar e restaurar em arquivo JSON (sem criptografia).
+- **Atualização:** verifica a última Release do GitHub, baixa, confere o SHA-256 e abre o instalador do Android.
+
+## Privacidade
+Os dados ficam somente no aparelho. A internet é usada apenas para consultar e baixar atualizações neste repositório.
+
+## Instalação
+Baixe o APK mais recente em [Releases](../../releases) e instale. Nas próximas versões, atualize pelo próprio app (Ajustes).
+
+## Desenvolvimento
+Kotlin 1.9.24, Compose BOM 2024.06.00, Room 2.6.1. O build, os testes e a publicação (APK assinado) rodam no GitHub Actions. Veja [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).

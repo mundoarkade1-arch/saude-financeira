@@ -18,7 +18,7 @@ data class Snapshot(
 
 /** Regras locais: nenhum dado sai do aparelho. */
 object TipEngine {
-    fun generate(s: Snapshot): List<Tip> {
+    fun generate(s: Snapshot, risingBills: List<Pair<String, Int>> = emptyList()): List<Tip> {
         if (s.incomeCents <= 0) {
             return listOf(
                 Tip("Comece pelo salário", "Informe sua renda mensal na tela Início para receber dicas personalizadas.", TipLevel.INFO)
@@ -54,6 +54,14 @@ object TipEngine {
             tips += Tip("Ótima sobra", "Você prevê guardar ${(saveRate * 100).toInt()}% da renda. Direcione para a reserva de emergência.", TipLevel.GOOD)
         } else if (s.balanceCents >= 0) {
             tips += Tip("Aumente a sobra", "Sua sobra prevista é ${(saveRate * 100).toInt()}% da renda. Tente chegar a 20%.", TipLevel.INFO)
+        }
+
+        risingBills.firstOrNull()?.let { (name, pct) ->
+            tips += Tip(
+                "Conta em alta",
+                "$name está $pct% acima da sua média recente. Vale revisar o consumo.",
+                TipLevel.WARNING,
+            )
         }
 
         tips += Tip(
