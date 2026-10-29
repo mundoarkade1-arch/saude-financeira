@@ -17,7 +17,13 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 5 (entregue, aguardando build): versão completa
+## Etapa 6 (entregue, aguardando build): lembretes de vencimento
+- WorkManager (work-runtime-ktx 2.9.0) agenda verificação diária ~9h; notifica contas com dueDay (hoje ou 1/3 dias antes), sem repetir o mesmo vencimento.
+- Permissão POST_NOTIFICATIONS pedida só ao ativar. Ajustes: chave, antecedência e botão de teste.
+- Parcelas não têm dia de vencimento, então não geram lembrete.
+- Lógica de datas coberta por `ReminderLogicTest`; notificação/worker só testáveis no aparelho (botão de teste).
+
+## Etapa 5 (validar build): versão completa
 - Banco v2 (migração 1->2 cria `bill_entries`; dados preservados). Histórico mensal, média e tendência das contas variáveis.
 - Edição de parcelas. Backup/restauração em JSON (validação antes de alterar o banco; transação).
 - Dica "conta em alta" (>=15% acima da média anterior). Tela Ajustes completa.

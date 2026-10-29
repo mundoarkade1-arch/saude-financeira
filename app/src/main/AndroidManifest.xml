@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Necessária para abrir o instalador do Android com a nova versão (o usuário sempre confirma). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Necessária (Android 13+) para os lembretes de vencimento. Só é pedida quando você ativa os lembretes. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".FinanceApp"

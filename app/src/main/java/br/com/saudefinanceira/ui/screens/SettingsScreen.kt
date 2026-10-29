@@ -1,6 +1,8 @@
 package br.com.saudefinanceira.ui.screens
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +18,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +39,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saudefinanceira.ui.BackupViewModel
 import br.com.saudefinanceira.ui.components.AppCard
 import br.com.saudefinanceira.ui.components.GradientProgress
+import br.com.saudefinanceira.reminders.Notifier
+import br.com.saudefinanceira.reminders.ReminderPrefs
+import br.com.saudefinanceira.reminders.ReminderScheduler
 import br.com.saudefinanceira.ui.components.ScreenHeader
 import br.com.saudefinanceira.update.Installer
 import br.com.saudefinanceira.update.UpdateState
@@ -47,6 +55,22 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
     val context = LocalContext.current
     var permissionHint by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<Uri?>(null) }
+
+    val reminderPrefs = remember { ReminderPrefs(context) }
+    var remindersOn by remember { mutableStateOf(reminderPrefs.enabled) }
+    var leadDays by remember { mutableIntStateOf(reminderPrefs.leadDays) }
+    var reminderProblem by remember { mutableStateOf(false) }
+
+    fun enableReminders() {
+        reminderPrefs.enabled = true
+        remindersOn = true
+        reminderProblem = false
+        ReminderScheduler.schedule(context)
+    }
+
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) enableReminders() else reminderProblem = true
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) backup.export(uri)
@@ -119,6 +143,65 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
                                 Text("Tentar de novo")
                             }
                         }
+                    }
+                }
+            }
+
+            AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Lembretes de vencimento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Aviso por volta das 9h para contas que têm dia de vencimento.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = remindersOn,
+                            onCheckedChange = { wantOn ->
+                                if (!wantOn) {
+                                    reminderPrefs.enabled = false
+                                    remindersOn = false
+                                    reminderProblem = false
+                                    ReminderScheduler.cancel(context)
+                                } else if (Notifier.hasPermission(context)) {
+                                    enableReminders()
+                                } else if (Build.VERSION.SDK_INT >= 33) {
+                                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    reminderProblem = true
+                                }
+                            },
+                        )
+                    }
+                    if (remindersOn) {
+                        Text("Avisar:", style = MaterialTheme.typography.bodyMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(0 to "No dia", 1 to "1 dia antes", 3 to "3 dias antes").forEach { (days, label) ->
+                                FilterChip(
+                                    selected = leadDays == days,
+                                    onClick = { leadDays = days; reminderPrefs.leadDays = days },
+                                    label = { Text(label) },
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { reminderProblem = !Notifier.showTest(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Enviar lembrete de teste") }
+                    }
+                    if (reminderProblem) {
+                        Text(
+                            "As notificações do Saúde Financeira estão desativadas. Ative nas configurações do Android para receber lembretes.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             }
