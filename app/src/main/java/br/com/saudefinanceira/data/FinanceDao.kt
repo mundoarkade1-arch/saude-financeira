@@ -109,4 +109,20 @@ interface FinanceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoals(list: List<GoalEntity>)
+
+    // ---- histórico mensal ----
+    @Query("SELECT * FROM month_snapshots")
+    fun observeSnapshots(): Flow<List<MonthSnapshotEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSnapshot(snapshot: MonthSnapshotEntity)
+
+    @Query("SELECT * FROM month_snapshots")
+    suspend fun getSnapshots(): List<MonthSnapshotEntity>
+
+    @Query("DELETE FROM month_snapshots")
+    suspend fun clearSnapshots()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSnapshots(list: List<MonthSnapshotEntity>)
 }

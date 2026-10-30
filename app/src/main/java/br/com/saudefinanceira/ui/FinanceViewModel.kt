@@ -9,6 +9,7 @@ import br.com.saudefinanceira.data.BillEntryEntity
 import br.com.saudefinanceira.data.BillType
 import br.com.saudefinanceira.data.GoalEntity
 import br.com.saudefinanceira.data.IncomeEntity
+import br.com.saudefinanceira.data.MonthSnapshotEntity
 import br.com.saudefinanceira.data.InstallmentEntity
 import br.com.saudefinanceira.domain.BillStatsCalc
 import br.com.saudefinanceira.domain.InstallmentCalc
@@ -60,6 +61,30 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
             if (trend != null && trend >= 15) b.name to trend else null
         }.sortedByDescending { it.second }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val history: StateFlow<List<MonthSnapshotEntity>> =
+        dao.observeSnapshots().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // Registra o resumo do mês atual sempre que os números mudam (o histórico começa a partir desta versão).
+        viewModelScope.launch {
+            snapshot.collect { s ->
+                if (s.incomeCents > 0L || s.spentCents > 0L) {
+                    val now = YearMonth.now()
+                    dao.upsertSnapshot(
+                        MonthSnapshotEntity(
+                            year = now.year,
+                            month = now.monthValue,
+                            incomeCents = s.incomeCents,
+                            fixedCents = s.fixedCents,
+                            variableCents = s.variableCents,
+                            installmentsCents = s.installmentsCents,
+                        )
+                    )
+                }
+            }
+        }
+    }
 
     fun saveSalary(cents: Long) {
         viewModelScope.launch { dao.upsertIncome(IncomeEntity(id = 1, description = "Salário", amountCents = cents)) }

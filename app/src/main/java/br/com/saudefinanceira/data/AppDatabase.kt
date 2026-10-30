@@ -10,8 +10,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // Sem fallbackToDestructiveMigration: nunca apagamos dados financeiros em silêncio.
 // Ao mudar o schema, aumente a versão e escreva uma Migration.
 @Database(
-    entities = [IncomeEntity::class, BillEntity::class, InstallmentEntity::class, BillEntryEntity::class, GoalEntity::class],
-    version = 3,
+    entities = [IncomeEntity::class, BillEntity::class, InstallmentEntity::class, BillEntryEntity::class, GoalEntity::class, MonthSnapshotEntity::class],
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -49,9 +49,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** v3 -> v4: cria o histórico mensal. Dados existentes são preservados. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `month_snapshots` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`year` INTEGER NOT NULL, " +
+                        "`month` INTEGER NOT NULL, " +
+                        "`incomeCents` INTEGER NOT NULL, " +
+                        "`fixedCents` INTEGER NOT NULL, " +
+                        "`variableCents` INTEGER NOT NULL, " +
+                        "`installmentsCents` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_month_snapshots_year_month` " +
+                        "ON `month_snapshots` (`year`, `month`)"
+                )
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "saude_financeira.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }

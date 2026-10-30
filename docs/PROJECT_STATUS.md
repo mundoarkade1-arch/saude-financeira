@@ -17,7 +17,13 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 8 (entregue, aguardando build): "Para onde vai seu dinheiro"
+## Etapa 9 (entregue, aguardando build): histórico mensal
+- Banco v4 (migração 3->4 cria `month_snapshots` com índice único year+month; dados preservados). Backup inclui o histórico (backups antigos continuam válidos).
+- O ViewModel grava o resumo do mês atual a cada mudança dos números (ignora tudo zerado). Histórico começa na instalação desta versão; não há dados retroativos.
+- Cartão "Evolução da sua sobra" no Início (últimos 6 meses + comparação com o mês anterior).
+- Testes: `HistoryCalcTest`.
+
+## Etapa 8 (validada): "Para onde vai seu dinheiro"
 - Cartão na tela Início: barra de composição (fixas/variáveis/parcelas/sobra) e 5 maiores gastos com % da renda. Sem mudança de banco.
 - Testes: `SpendingBreakdownTest`.
 

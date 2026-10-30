@@ -63,6 +63,7 @@ fun HomeScreen(
     val s by vm.snapshot.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
     val bills by vm.bills.collectAsStateWithLifecycle()
+    val history by vm.history.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
 
     val now = YearMonth.now()
@@ -118,6 +119,8 @@ fun HomeScreen(
             }
 
             SpendingCard(s, SpendingBreakdown.items(bills, installments, now))
+
+            HistoryCard(history)
 
             ProjectionCard(installments, now)
 

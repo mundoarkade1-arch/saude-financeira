@@ -56,3 +56,18 @@ data class GoalEntity(
     val targetCents: Long,
     val savedCents: Long,
 )
+
+/** Resumo de cada mês (o do mês atual é atualizado sempre que os números mudam). */
+@Entity(
+    tableName = "month_snapshots",
+    indices = [Index(value = ["year", "month"], unique = true)],
+)
+data class MonthSnapshotEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val year: Int,
+    val month: Int,
+    val incomeCents: Long,
+    val fixedCents: Long,
+    val variableCents: Long,
+    val installmentsCents: Long,
+)
