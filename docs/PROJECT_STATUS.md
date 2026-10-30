@@ -17,7 +17,11 @@
 ## Secrets necessários (somente nomes)
 - Nenhum nesta etapa. Etapa de assinatura: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-## Etapa 10 (entregue, aguardando build): faturas por cartão e primeiros passos
+## Revisão de qualidade (entregue, aguardando build)
+- Correção em `Money.parse`: "3.500" era lido como R$ 3,50; agora é R$ 3.500 (ponto como milhar). Também rejeita "1e5", negativos e valores que estourariam o Long.
+- Testes: `MoneyTest`.
+
+## Etapa 10 (entregue, validada): faturas por cartão e primeiros passos
 - Cartão "Faturas por cartão" na tela Parcelas (agrupa por nome do cartão, ignora maiúsculas/espaços; mostra mês atual + 3 meses e última parcela).
 - Guia "Primeiros passos" no Início enquanto faltarem salário ou contas.
 - Sem mudança de banco. Testes: `CardInvoicesTest`.
