@@ -92,6 +92,8 @@ fun AppRoot(db: AppDatabase) {
                     onOpenTips = { nav.goTo(Dest.Tips.route) },
                     pendingUpdate = pendingUpdate,
                     onOpenSettings = { nav.goTo(Dest.Settings.route) },
+                    onOpenBills = { nav.goTo(Dest.Bills.route) },
+                    onOpenInstallments = { nav.goTo(Dest.Installments.route) },
                 )
             }
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }

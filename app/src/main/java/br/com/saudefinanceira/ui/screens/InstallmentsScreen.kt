@@ -33,6 +33,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saudefinanceira.data.InstallmentEntity
+import br.com.saudefinanceira.domain.CardInvoice
+import br.com.saudefinanceira.domain.CardInvoices
 import br.com.saudefinanceira.domain.InstallmentCalc
 import br.com.saudefinanceira.domain.InstallmentStatus
 import br.com.saudefinanceira.ui.FinanceViewModel
@@ -57,6 +59,7 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val rows = items.map { it to InstallmentCalc.status(it, now) }
     val monthly = rows.sumOf { it.second.monthlyCents }
     val remaining = rows.sumOf { it.second.remainingCents }
+    val invoices = CardInvoices.compute(items, now)
 
     Box(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxSize()) {
@@ -75,6 +78,9 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                     contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 96.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    if (invoices.isNotEmpty()) {
+                        item { InvoicesCard(invoices, now) }
+                    }
                     items(rows, key = { it.first.id }) { (item, st) ->
                         InstallmentCard(item, st, onClick = { editing = item }, onDelete = { deleting = item })
                     }
@@ -228,4 +234,42 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
+}
+
+@Composable
+private fun InvoicesCard(invoices: List<CardInvoice>, now: YearMonth) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Faturas por cartão", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            invoices.forEach { inv ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(inv.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Este mês: ${Money.format(inv.months.first())}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                    Text(
+                        inv.months.drop(1).mapIndexed { i, v ->
+                            "${monthLabel(now.plusMonths((i + 1).toLong()))}: ${Money.format(v)}"
+                        }.joinToString("  ·  "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "Última parcela em ${monthLabel(inv.lastMonth)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(
+                "Só as parcelas cadastradas entram aqui; compras à vista no cartão não são contadas.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }

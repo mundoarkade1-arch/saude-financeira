@@ -59,6 +59,8 @@ fun HomeScreen(
     onOpenTips: () -> Unit,
     pendingUpdate: UpdateInfo?,
     onOpenSettings: () -> Unit,
+    onOpenBills: () -> Unit = {},
+    onOpenInstallments: () -> Unit = {},
 ) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
@@ -103,6 +105,16 @@ fun HomeScreen(
                         )
                     }
                 }
+            }
+            if (s.incomeCents == 0L || bills.isEmpty()) {
+                OnboardingCard(
+                    hasSalary = s.incomeCents > 0L,
+                    hasBills = bills.isNotEmpty(),
+                    hasInstallments = installments.isNotEmpty(),
+                    onSalary = { showDialog = true },
+                    onBills = onOpenBills,
+                    onInstallments = onOpenInstallments,
+                )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("Fixas", Money.format(s.fixedCents), Modifier.weight(1f))
@@ -225,4 +237,37 @@ private fun SalaryDialog(initialCents: Long, onDismiss: () -> Unit, onSave: (Lon
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
     )
+}
+
+@Composable
+private fun OnboardingCard(
+    hasSalary: Boolean,
+    hasBills: Boolean,
+    hasInstallments: Boolean,
+    onSalary: () -> Unit,
+    onBills: () -> Unit,
+    onInstallments: () -> Unit,
+) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Primeiros passos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            StepRow(hasSalary, "Informe seu salário", "Informar", onSalary)
+            StepRow(hasBills, "Cadastre suas contas (aluguel, luz, mercado...)", "Cadastrar", onBills)
+            StepRow(hasInstallments, "Cadastre compras parceladas (se tiver)", "Cadastrar", onInstallments)
+        }
+    }
+}
+
+@Composable
+private fun StepRow(done: Boolean, text: String, action: String, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (done) "✓" else "•",
+            style = MaterialTheme.typography.titleMedium,
+            color = if (done) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(24.dp),
+        )
+        Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        if (!done) TextButton(onClick = onClick) { Text(action) }
+    }
 }

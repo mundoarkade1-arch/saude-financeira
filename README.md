@@ -7,6 +7,8 @@ App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira.
 - **Evolução:** histórico mensal da sobra, com comparação com o mês anterior (começa a partir da versão que trouxe o recurso).
 - **Para onde vai o dinheiro:** composição do mês (fixas, variáveis, parcelas e sobra) e os 5 maiores gastos, com % da renda.
 - **Contas:** fixas (por tempo indeterminado) e variáveis (luz, água, gasolina, mercado) com histórico mensal, média e tendência.
+- **Faturas por cartão:** total de parcelas de cada cartão no mês atual e nos próximos, com a data da última parcela.
+- **Primeiros passos:** guia na tela Início para quem está começando.
 - **Parcelas:** compras parceladas com parcela atual calculada automaticamente, progresso, valor restante e mês final.
 - **Dicas:** regra 50/30/20, alerta de compromissos, reserva de emergência e contas em alta (calculadas no aparelho).
 - **Metas:** metas de economia (como a reserva de emergência sugerida a partir dos seus gastos), com progresso e mês estimado para concluir.
