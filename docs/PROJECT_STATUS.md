@@ -5,6 +5,7 @@ App Android offline para controle financeiro pessoal. O código-fonte deste docu
 ## O que já funciona
 
 - **Início:** renda, compromissos, sobra prevista, projeção de parcelas para seis meses, maiores gastos, composição mensal e evolução histórica.
+- **Guia de uso:** tour interativo na primeira abertura, com progresso, opção de pular e acesso para rever em Ajustes.
 - **Contas:** cadastro, edição e exclusão de contas fixas e variáveis; vencimentos; lançamento mensal de variáveis; média e tendência.
 - **Histórico de contas:** consulta e correção de meses anteriores; inclusão e exclusão de lançamentos sem apagar o valor do mês atual.
 - **Relatórios:** intervalo selecionável, totais por mês e exportação CSV com separador `;` e decimais em vírgula.
@@ -12,6 +13,7 @@ App Android offline para controle financeiro pessoal. O código-fonte deste docu
 - **Dicas e metas:** orientações geradas no aparelho, contas em alta, metas de economia e reserva de emergência sugerida.
 - **Lembretes:** notificações configuráveis de vencimento, com antecedência escolhida pela pessoa usuária.
 - **Ajustes:** exportação e restauração de backup JSON, lembretes e atualização pelo GitHub Releases com verificação SHA-256.
+- **Atualização visível:** consulta ao abrir e ao voltar ao app (com intervalo mínimo de cinco minutos), estado e falhas visíveis na tela inicial; em Ajustes, explica que só Releases publicadas contam como atualização.
 - **Privacidade:** os dados financeiros permanecem no aparelho. A conexão é usada para buscar atualizações.
 
 ## Verificações automatizadas

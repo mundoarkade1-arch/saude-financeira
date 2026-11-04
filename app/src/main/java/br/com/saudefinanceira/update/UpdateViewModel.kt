@@ -30,21 +30,23 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     val installedName: String = pkg.versionName ?: "?"
 
     private val updatesDir = File(app.cacheDir, "updates")
+    private var lastCheckAtMillis = 0L
 
-    /** [silent]: verificação automática ao abrir o app, sem mostrar erros. */
-    fun check(silent: Boolean) {
+    /** Verifica Releases publicadas e expõe o andamento e eventuais falhas para a interface. */
+    fun check(force: Boolean = false) {
         val s = _state.value
         if (s is UpdateState.Checking || s is UpdateState.Downloading || s is UpdateState.Ready) return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastCheckAtMillis < 5 * 60 * 1_000) return
+        lastCheckAtMillis = now
         viewModelScope.launch {
-            if (!silent) _state.value = UpdateState.Checking
+            _state.value = UpdateState.Checking
             try {
                 val info = withContext(Dispatchers.IO) { Updater.fetchLatest() }
                 _state.value =
                     if (info.versionCode > installedCode) UpdateState.Available(info) else UpdateState.UpToDate
-            } catch (e: Exception) {
-                if (!silent) {
-                    _state.value = UpdateState.Failed("Não foi possível verificar agora. Confira a internet e tente de novo.")
-                }
+            } catch (_: Exception) {
+                _state.value = UpdateState.Failed("Não foi possível consultar as Releases do GitHub. Confira a internet e tente de novo.")
             }
         }
     }

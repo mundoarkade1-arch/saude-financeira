@@ -49,7 +49,7 @@ import br.com.saudefinanceira.update.UpdateViewModel
 import java.time.LocalDate
 
 @Composable
-fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: PaddingValues) {
+fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: PaddingValues, onOpenGuide: () -> Unit = {}) {
     val st by update.state.collectAsStateWithLifecycle()
     val backupMessage by backup.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -84,13 +84,26 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
 
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             AppCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Precisa de ajuda?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Revise o guia rápido com a explicação das telas e dos principais recursos.", style = MaterialTheme.typography.bodyMedium)
+                    OutlinedButton(onClick = onOpenGuide, modifier = Modifier.fillMaxWidth()) { Text("Abrir guia rápido") }
+                }
+            }
+
+            AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Atualizações", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "O app consulta Releases publicadas no GitHub. APKs de teste em Actions não aparecem como atualização automática.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
 
                     when (val s = st) {
                         is UpdateState.Idle -> {
-                            Text("Toque para ver se existe uma versão nova.", style = MaterialTheme.typography.bodyMedium)
-                            Button(onClick = { update.check(silent = false) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Toque para consultar se há uma versão mais recente publicada nas Releases.", style = MaterialTheme.typography.bodyMedium)
+                            Button(onClick = { update.check(force = true) }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Verificar atualizações")
                             }
                         }
@@ -101,8 +114,8 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
                             }
                         }
                         is UpdateState.UpToDate -> {
-                            Text("Você já está na versão mais recente.", style = MaterialTheme.typography.bodyMedium)
-                            OutlinedButton(onClick = { update.check(silent = false) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Nenhuma versão mais recente está publicada nas Releases do GitHub.", style = MaterialTheme.typography.bodyMedium)
+                            OutlinedButton(onClick = { update.check(force = true) }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Verificar de novo")
                             }
                         }
@@ -139,7 +152,7 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
                         }
                         is UpdateState.Failed -> {
                             Text(s.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
-                            OutlinedButton(onClick = { update.reset(); update.check(silent = false) }, modifier = Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick = { update.reset(); update.check(force = true) }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Tentar de novo")
                             }
                         }

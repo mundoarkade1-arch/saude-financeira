@@ -10,7 +10,7 @@ App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira.
 - **Histórico de contas:** consulte, corrija ou inclua lançamentos de meses anteriores.
 - **Relatórios:** escolha um intervalo, compare renda, gastos e sobra, e exporte CSV compatível com planilhas em português.
 - **Faturas por cartão:** total de parcelas de cada cartão no mês atual e nos próximos, com a data da última parcela.
-- **Primeiros passos:** guia na tela Início para quem está começando.
+- **Guia de uso:** apresentação interativa na primeira abertura, com opção de rever em Ajustes.
 - **Parcelas:** compras parceladas com parcela atual calculada automaticamente, progresso, valor restante e mês final.
 - **Dicas:** regra 50/30/20, alerta de compromissos, reserva de emergência e contas em alta (calculadas no aparelho).
 - **Metas:** metas de economia (como a reserva de emergência sugerida a partir dos seus gastos), com progresso e mês estimado para concluir.
@@ -23,6 +23,8 @@ App Android nativo (Kotlin + Jetpack Compose) para organizar a vida financeira.
 Os dados ficam somente no aparelho. A internet é usada apenas para consultar e baixar atualizações neste repositório.
 
 O histórico não é retroativo: contas variáveis e evolução mensal passam a ser registradas conforme o app é usado. Backups JSON não são criptografados; mantenha o arquivo em local seguro.
+
+O atualizador consulta somente Releases publicadas no GitHub. APKs de teste da aba Actions não são tratados como atualizações automáticas.
 
 ## Instalação
 Baixe o APK mais recente em [Releases](../../releases) e instale. Nas próximas versões, atualize pelo próprio app (Ajustes).

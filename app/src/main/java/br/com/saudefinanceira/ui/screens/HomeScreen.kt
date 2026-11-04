@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +46,7 @@ import br.com.saudefinanceira.ui.components.ScreenHeader
 import br.com.saudefinanceira.ui.components.monthLabel
 import br.com.saudefinanceira.ui.theme.BrandGradient
 import br.com.saudefinanceira.update.UpdateInfo
+import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.util.Money
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -58,6 +60,8 @@ fun HomeScreen(
     padding: PaddingValues,
     onOpenTips: () -> Unit,
     pendingUpdate: UpdateInfo?,
+    updateState: UpdateState = UpdateState.Idle,
+    onCheckUpdates: () -> Unit = {},
     onOpenSettings: () -> Unit,
     onOpenBills: () -> Unit = {},
     onOpenInstallments: () -> Unit = {},
@@ -95,15 +99,34 @@ fun HomeScreen(
         }
 
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            if (pendingUpdate != null) {
-                AppCard(Modifier.fillMaxWidth(), onClick = onOpenSettings) {
+            when {
+                pendingUpdate != null -> AppCard(Modifier.fillMaxWidth(), onClick = onOpenSettings) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Nova versão disponível", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("${pendingUpdate.tag} — toque aqui para atualizar", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+                updateState is UpdateState.Checking -> AppCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CircularProgressIndicator(Modifier.width(22.dp).height(22.dp), strokeWidth = 2.dp)
+                        Text("Verificando atualizações publicadas…", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+                updateState is UpdateState.UpToDate -> AppCard(Modifier.fillMaxWidth(), onClick = onOpenSettings) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("App atualizado", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(
-                            "${pendingUpdate.tag} — toque aqui para atualizar",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            "Nenhuma versão mais recente foi publicada nas Releases. APKs em Actions são apenas para teste.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                }
+                updateState is UpdateState.Failed -> AppCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Não foi possível verificar atualizações", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(updateState.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        TextButton(onClick = onCheckUpdates) { Text("Tentar novamente") }
                     }
                 }
             }

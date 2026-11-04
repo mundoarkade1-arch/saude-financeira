@@ -14,10 +14,17 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -31,6 +38,7 @@ import br.com.saudefinanceira.ui.screens.InstallmentsScreen
 import br.com.saudefinanceira.ui.screens.SettingsScreen
 import br.com.saudefinanceira.ui.screens.TipsScreen
 import br.com.saudefinanceira.ui.screens.ReportsScreen
+import br.com.saudefinanceira.ui.components.QuickGuideDialog
 import br.com.saudefinanceira.update.UpdateInfo
 import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.update.UpdateViewModel
@@ -64,8 +72,23 @@ fun AppRoot(db: AppDatabase) {
         else -> null
     }
 
-    // Verificação automática (silenciosa) ao abrir o app.
-    LaunchedEffect(Unit) { updateVm.check(silent = true) }
+    // Reconsulta quando o app volta ao primeiro plano; o ViewModel limita a frequência.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, updateVm) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) updateVm.check()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val context = LocalContext.current
+    val guidePrefs = remember(context) { context.getSharedPreferences("saude_financeira_guide", 0) }
+    var showGuide by remember { mutableStateOf(!guidePrefs.getBoolean("completed", false)) }
+    fun finishGuide() {
+        guidePrefs.edit().putBoolean("completed", true).apply()
+        showGuide = false
+    }
 
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
@@ -92,6 +115,8 @@ fun AppRoot(db: AppDatabase) {
                     vm, padding,
                     onOpenTips = { nav.goTo(Dest.Tips.route) },
                     pendingUpdate = pendingUpdate,
+                    updateState = updateState,
+                    onCheckUpdates = { updateVm.check(force = true) },
                     onOpenSettings = { nav.goTo(Dest.Settings.route) },
                     onOpenBills = { nav.goTo(Dest.Bills.route) },
                     onOpenInstallments = { nav.goTo(Dest.Installments.route) },
@@ -101,8 +126,10 @@ fun AppRoot(db: AppDatabase) {
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }
             composable(Dest.Installments.route) { InstallmentsScreen(vm, padding) }
             composable(Dest.Tips.route) { TipsScreen(vm, padding) }
-            composable(Dest.Settings.route) { SettingsScreen(updateVm, backupVm, padding) }
+            composable(Dest.Settings.route) { SettingsScreen(updateVm, backupVm, padding, onOpenGuide = { showGuide = true }) }
             composable("relatorios") { ReportsScreen(vm, padding) }
         }
     }
+
+    if (showGuide) QuickGuideDialog(onFinish = ::finishGuide)
 }
