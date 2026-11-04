@@ -4,10 +4,26 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Coin badge: warm gold stays legible on both light and dark launchers. -->
     <path
-        android:pathData="M30,56 L42,56 L48,40 L58,70 L66,50 L78,50"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
+        android:fillColor="#F5C75E"
+        android:strokeColor="#FFF1C4"
+        android:strokeWidth="2.5"
+        android:pathData="M54,24 A30,30 0,1 0,54 84 A30,30 0,1 0,54 24 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#D99E2B"
+        android:strokeWidth="1.5"
+        android:pathData="M54,30 A24,24 0,1 0,54 78 A24,24 0,1 0,54 30 Z" />
+    <!-- Three rising bars and a clear growth arrow form a compact finance mark. -->
+    <path
+        android:fillColor="#123B53"
+        android:pathData="M37,62 L44,62 L44,69 L37,69 Z M49,53 L56,53 L56,69 L49,69 Z M61,44 L68,44 L68,69 L61,69 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#123B53"
+        android:strokeWidth="3.5"
         android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:strokeLineJoin="round"
+        android:pathData="M37,54 L49,45 L58,49 L70,36 M61,36 L70,36 L70,45" />
 </vector>

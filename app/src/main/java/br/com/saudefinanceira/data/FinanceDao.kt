@@ -39,6 +39,12 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertEntry(entry: BillEntryEntity)
 
+    @Query("DELETE FROM bill_entries WHERE id = :entryId")
+    suspend fun deleteEntry(entryId: Long)
+
+    @Query("SELECT * FROM bills WHERE id = :billId LIMIT 1")
+    suspend fun getBill(billId: Long): BillEntity?
+
     @Query("DELETE FROM bill_entries WHERE billId = :billId")
     suspend fun deleteEntriesOf(billId: Long)
 

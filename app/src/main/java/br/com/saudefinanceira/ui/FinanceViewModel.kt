@@ -66,6 +66,31 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
         dao.observeSnapshots().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        // Contas variáveis existentes antes do histórico começam a registrar o valor atual
+        // no mês presente. O app não inventa valores para meses anteriores.
+        viewModelScope.launch {
+            combine(dao.observeBills(), dao.observeEntries()) { bills, entries -> bills to entries }
+                .collect { (bills, entries) ->
+                    val now = YearMonth.now()
+                    val currentEntries = entries.asSequence()
+                        .filter { it.year == now.year && it.month == now.monthValue }
+                        .map { it.billId }
+                        .toSet()
+                    bills.asSequence()
+                        .filter { it.type == BillType.VARIABLE && it.id !in currentEntries }
+                        .forEach { bill ->
+                            dao.upsertEntry(
+                                BillEntryEntity(
+                                    billId = bill.id,
+                                    year = now.year,
+                                    month = now.monthValue,
+                                    amountCents = bill.amountCents,
+                                )
+                            )
+                        }
+                }
+        }
+
         // Registra o resumo do mês atual sempre que os números mudam (o histórico começa a partir desta versão).
         viewModelScope.launch {
             snapshot.collect { s ->
@@ -105,6 +130,20 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
             dao.deleteEntriesOf(bill.id)
             dao.deleteBill(bill)
         }
+    }
+
+    fun saveBillEntry(entry: BillEntryEntity) {
+        viewModelScope.launch {
+            dao.upsertEntry(entry)
+            val now = YearMonth.now()
+            if (entry.year == now.year && entry.month == now.monthValue) {
+                dao.getBill(entry.billId)?.let { dao.updateBill(it.copy(amountCents = entry.amountCents)) }
+            }
+        }
+    }
+
+    fun deleteBillEntry(entry: BillEntryEntity) {
+        viewModelScope.launch { dao.deleteEntry(entry.id) }
     }
 
     fun saveInstallment(item: InstallmentEntity) {

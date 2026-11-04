@@ -30,6 +30,7 @@ import br.com.saudefinanceira.ui.screens.HomeScreen
 import br.com.saudefinanceira.ui.screens.InstallmentsScreen
 import br.com.saudefinanceira.ui.screens.SettingsScreen
 import br.com.saudefinanceira.ui.screens.TipsScreen
+import br.com.saudefinanceira.ui.screens.ReportsScreen
 import br.com.saudefinanceira.update.UpdateInfo
 import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.update.UpdateViewModel
@@ -94,12 +95,14 @@ fun AppRoot(db: AppDatabase) {
                     onOpenSettings = { nav.goTo(Dest.Settings.route) },
                     onOpenBills = { nav.goTo(Dest.Bills.route) },
                     onOpenInstallments = { nav.goTo(Dest.Installments.route) },
+                    onOpenReports = { nav.goTo("relatorios") },
                 )
             }
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }
             composable(Dest.Installments.route) { InstallmentsScreen(vm, padding) }
             composable(Dest.Tips.route) { TipsScreen(vm, padding) }
             composable(Dest.Settings.route) { SettingsScreen(updateVm, backupVm, padding) }
+            composable("relatorios") { ReportsScreen(vm, padding) }
         }
     }
 }

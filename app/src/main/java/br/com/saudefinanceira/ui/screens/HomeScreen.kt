@@ -61,6 +61,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenBills: () -> Unit = {},
     onOpenInstallments: () -> Unit = {},
+    onOpenReports: () -> Unit = {},
 ) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
@@ -133,6 +134,20 @@ fun HomeScreen(
             SpendingCard(s, SpendingBreakdown.items(bills, installments, now))
 
             HistoryCard(history)
+
+            AppCard(Modifier.fillMaxWidth(), onClick = onOpenReports) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Relatórios por período", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Compare os meses e exporte para planilha.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text("›", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                }
+            }
 
             ProjectionCard(installments, now)
 
