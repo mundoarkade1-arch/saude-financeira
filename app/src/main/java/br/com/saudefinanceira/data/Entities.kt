@@ -1,5 +1,6 @@
 package br.com.saudefinanceira.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -11,6 +12,8 @@ data class IncomeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val description: String,
     val amountCents: Long,
+    /** Dia do mês em que o dinheiro cai na conta (opcional); define o início do ciclo de gastos. */
+    val payDay: Int? = null,
 )
 
 /** FIXED: valor fixo por tempo indeterminado. VARIABLE: valor do mês mais recente informado. */
@@ -21,6 +24,8 @@ data class BillEntity(
     val type: BillType,
     val amountCents: Long,
     val dueDay: Int? = null,
+    /** 0 = essencial, 1 = importante, 2 = pode esperar. Define a ordem de pagamento. */
+    @ColumnInfo(defaultValue = "1") val priority: Int = 1,
 )
 
 /** O app calcula a parcela atual a partir do mês da primeira parcela. */
@@ -33,6 +38,7 @@ data class InstallmentEntity(
     val firstYear: Int,
     val firstMonth: Int,
     val card: String? = null,
+    @ColumnInfo(defaultValue = "'Cartão de crédito'") val paymentMethod: String = "Cartão de crédito",
 )
 
 /** Histórico mensal das contas variáveis (uma linha por conta e mês). */
@@ -70,4 +76,32 @@ data class MonthSnapshotEntity(
     val fixedCents: Long,
     val variableCents: Long,
     val installmentsCents: Long,
+    @ColumnInfo(defaultValue = "0") val debtPaymentsCents: Long = 0,
+)
+
+
+
+
+/** Gasto rápido do dia a dia (mercado, passagem, lanche...), lançado na tela inicial. */
+@Entity(tableName = "quick_expenses")
+data class QuickExpenseEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amountCents: Long,
+    val note: String,
+    val year: Int,
+    val month: Int,
+    val day: Int,
+)
+
+/** Dívida informada pela pessoa; o app não consulta birôs de crédito. */
+@Entity(tableName = "debts")
+data class DebtEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val creditor: String,
+    val description: String,
+    val balanceCents: Long,
+    @ColumnInfo(defaultValue = "0") val monthlyInterestBasisPoints: Int = 0,
+    val dueDay: Int? = null,
+    @ColumnInfo(defaultValue = "0") val isNegative: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val plannedPaymentCents: Long = 0,
 )

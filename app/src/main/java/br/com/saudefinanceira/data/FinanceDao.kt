@@ -23,9 +23,24 @@ interface FinanceDao {
     @Query("SELECT * FROM bill_entries")
     fun observeEntries(): Flow<List<BillEntryEntity>>
 
+    @Query("SELECT * FROM debts ORDER BY isNegative DESC, monthlyInterestBasisPoints DESC, creditor")
+    fun observeDebts(): Flow<List<DebtEntity>>
+
     // ---- escrita ----
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertIncome(income: IncomeEntity)
+
+    @Delete
+    suspend fun deleteIncome(income: IncomeEntity)
+
+    @Insert
+    suspend fun insertDebt(debt: DebtEntity): Long
+
+    @Update
+    suspend fun updateDebt(debt: DebtEntity)
+
+    @Delete
+    suspend fun deleteDebt(debt: DebtEntity)
 
     @Insert
     suspend fun insertBill(bill: BillEntity): Long
@@ -70,6 +85,9 @@ interface FinanceDao {
     @Query("SELECT * FROM bill_entries")
     suspend fun getEntries(): List<BillEntryEntity>
 
+    @Query("SELECT * FROM debts")
+    suspend fun getDebts(): List<DebtEntity>
+
     @Query("DELETE FROM income")
     suspend fun clearIncome()
 
@@ -82,6 +100,9 @@ interface FinanceDao {
     @Query("DELETE FROM bill_entries")
     suspend fun clearEntries()
 
+    @Query("DELETE FROM debts")
+    suspend fun clearDebts()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIncomes(list: List<IncomeEntity>)
 
@@ -93,6 +114,9 @@ interface FinanceDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntries(list: List<BillEntryEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDebts(list: List<DebtEntity>)
 
     // ---- metas ----
     @Query("SELECT * FROM goals ORDER BY id")
@@ -116,6 +140,25 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoals(list: List<GoalEntity>)
 
+    // ---- gastos rápidos ----
+    @Query("SELECT * FROM quick_expenses ORDER BY year DESC, month DESC, day DESC, id DESC")
+    fun observeQuickExpenses(): Flow<List<QuickExpenseEntity>>
+
+    @Insert
+    suspend fun insertQuickExpense(item: QuickExpenseEntity): Long
+
+    @Query("DELETE FROM quick_expenses WHERE id = :id")
+    suspend fun deleteQuickExpense(id: Long)
+
+    @Query("SELECT * FROM quick_expenses")
+    suspend fun getQuickExpenses(): List<QuickExpenseEntity>
+
+    @Query("DELETE FROM quick_expenses")
+    suspend fun clearQuickExpenses()
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertQuickExpenses(list: List<QuickExpenseEntity>)
+
     // ---- histórico mensal ----
     @Query("SELECT * FROM month_snapshots")
     fun observeSnapshots(): Flow<List<MonthSnapshotEntity>>
@@ -132,3 +175,4 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshots(list: List<MonthSnapshotEntity>)
 }
+

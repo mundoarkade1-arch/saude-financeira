@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,12 +30,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.saudefinanceira.data.InstallmentEntity
+import br.com.saudefinanceira.data.PlanPrefs
+import br.com.saudefinanceira.data.IncomeEntity
+import br.com.saudefinanceira.domain.DailyBudgetCalc
 import br.com.saudefinanceira.domain.InstallmentCalc
+import br.com.saudefinanceira.domain.PayCycle
+import br.com.saudefinanceira.domain.SalarySplitCalc
 import br.com.saudefinanceira.domain.SpendingBreakdown
 import br.com.saudefinanceira.domain.TipEngine
 import br.com.saudefinanceira.domain.TipLevel
@@ -42,12 +49,14 @@ import br.com.saudefinanceira.ui.FinanceViewModel
 import br.com.saudefinanceira.ui.components.AppCard
 import br.com.saudefinanceira.ui.components.HeaderProgress
 import br.com.saudefinanceira.ui.components.MoneyField
+import br.com.saudefinanceira.ui.components.NumberField
 import br.com.saudefinanceira.ui.components.ScreenHeader
 import br.com.saudefinanceira.ui.components.monthLabel
 import br.com.saudefinanceira.ui.theme.BrandGradient
 import br.com.saudefinanceira.update.UpdateInfo
 import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.util.Money
+import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
@@ -68,10 +77,20 @@ fun HomeScreen(
     onOpenReports: () -> Unit = {},
 ) {
     val s by vm.snapshot.collectAsStateWithLifecycle()
+    val incomes by vm.incomes.collectAsStateWithLifecycle()
+    val debts by vm.debts.collectAsStateWithLifecycle()
     val installments by vm.installments.collectAsStateWithLifecycle()
     val bills by vm.bills.collectAsStateWithLifecycle()
     val history by vm.history.collectAsStateWithLifecycle()
+    val quick by vm.quickExpenses.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val planPrefs = remember(context) { PlanPrefs(context) }
+    var reserveCents by remember { mutableStateOf(planPrefs.reserveCents) }
+    var showReserve by remember { mutableStateOf(false) }
+    val today = LocalDate.now()
+    val budget = DailyBudgetCalc.compute(s, reserveCents, quick, today, PayCycle.mainPayDay(incomes))
+    val todayExpenses = quick.filter { it.year == today.year && it.month == today.monthValue && it.day == today.dayOfMonth }
 
     val now = YearMonth.now()
     val monthName = now.month.getDisplayName(TextStyle.FULL, ptBR)
@@ -89,8 +108,9 @@ fun HomeScreen(
         ScreenHeader(
             title = "Sobra prevista de $monthName",
             value = Money.format(s.balanceCents),
-            caption = if (s.incomeCents == 0L) "Informe seu salário para começar"
-            else "${(committed * 100).toInt()}% da renda comprometida",
+            caption = if (s.incomeCents == 0L && s.benefitIncomeCents > 0L) "VR/VM estão separados · informe também sua renda em dinheiro"
+            else if (s.incomeCents == 0L) "Informe sua renda em dinheiro para começar"
+            else "${(committed * 100).toInt()}% da renda em dinheiro comprometida" + if (s.benefitIncomeCents > 0) " · VR/VM acompanhados à parte" else "",
         ) {
             if (s.incomeCents > 0) {
                 Spacer(Modifier.height(12.dp))
@@ -140,10 +160,27 @@ fun HomeScreen(
                     onInstallments = onOpenInstallments,
                 )
             }
+            if (s.incomeCents > 0L) {
+                DailyBudgetCard(
+                    budget = budget,
+                    todayExpenses = todayExpenses,
+                    onAdd = vm::addQuickExpense,
+                    onDelete = vm::deleteQuickExpense,
+                )
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatCard("Fixas", Money.format(s.fixedCents), Modifier.weight(1f))
                 StatCard("Variáveis", Money.format(s.variableCents), Modifier.weight(1f))
                 StatCard("Parcelas", Money.format(s.installmentsCents), Modifier.weight(1f))
+            }
+
+            if (s.incomeCents > 0L) {
+                SalaryPlanCard(
+                    split = SalarySplitCalc.compute(bills, s, reserveCents),
+                    incomeCents = s.incomeCents,
+                    reserveCents = reserveCents,
+                    onEditReserve = { showReserve = true },
+                )
             }
 
             AppCard(Modifier.fillMaxWidth()) {
@@ -154,7 +191,7 @@ fun HomeScreen(
                 }
             }
 
-            SpendingCard(s, SpendingBreakdown.items(bills, installments, now))
+            SpendingCard(s, SpendingBreakdown.items(bills, installments, now, debts))
 
             HistoryCard(history)
 
@@ -175,16 +212,25 @@ fun HomeScreen(
             ProjectionCard(installments, now)
 
             Button(onClick = { showDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(if (s.incomeCents == 0L) "Informar salário" else "Alterar salário (${Money.format(s.incomeCents)})")
+                Text("Organizar renda e benefícios (${Money.format(s.incomeCents)})")
             }
         }
     }
 
+    if (showReserve) {
+        ReserveDialog(
+            currentCents = reserveCents,
+            onDismiss = { showReserve = false },
+            onSave = { planPrefs.reserveCents = it; reserveCents = it; showReserve = false },
+        )
+    }
+
     if (showDialog) {
-        SalaryDialog(
-            initialCents = s.incomeCents,
+        IncomeDialog(
+            incomes = incomes,
             onDismiss = { showDialog = false },
-            onSave = { vm.saveSalary(it); showDialog = false },
+            onSave = vm::saveIncome,
+            onDelete = vm::deleteIncome,
         )
     }
 }
@@ -252,28 +298,71 @@ private fun ProjectionCard(installments: List<InstallmentEntity>, now: YearMonth
 }
 
 @Composable
-private fun SalaryDialog(initialCents: Long, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
-    var text by remember { mutableStateOf(if (initialCents > 0) Money.formatPlain(initialCents) else "") }
+private fun IncomeDialog(
+    incomes: List<IncomeEntity>,
+    onDismiss: () -> Unit,
+    onSave: (IncomeEntity) -> Unit,
+    onDelete: (IncomeEntity) -> Unit,
+) {
+    val kinds = listOf("Salário", "VR", "VM", "Outra renda")
+    var kind by remember { mutableStateOf("Salário") }
+    var amount by remember { mutableStateOf("") }
+    var selectedId by remember { mutableStateOf<Long?>(null) }
+    var payDay by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
-
+    var dayError by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Seu salário mensal") },
+        title = { Text("Renda e benefícios") },
         text = {
-            Column {
-                MoneyField(value = text, onValueChange = { text = it; error = false }, label = "Valor (R$)")
-                if (error) {
-                    Text("Digite um valor válido, ex.: 3500,00", color = MaterialTheme.colorScheme.error)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Cadastre salário e outras rendas em dinheiro. Informe o saldo mensal de VR/VM para acompanhar compras; benefícios não entram na sobra disponível para contas.", style = MaterialTheme.typography.bodySmall)
+                incomes.forEach { income ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = {
+                            kind = income.description
+                            amount = Money.formatPlain(income.amountCents)
+                            payDay = income.payDay?.toString() ?: ""
+                            selectedId = income.id
+                            error = false
+                            dayError = false
+                        }, modifier = Modifier.weight(1f)) {
+                            Text("${income.description}: ${Money.format(income.amountCents)}" + (income.payDay?.let { " · dia $it" } ?: ""))
+                        }
+                        TextButton(onClick = { onDelete(income); if (selectedId == income.id) { selectedId = null; amount = ""; payDay = "" } }) { Text("Remover") }
+                    }
                 }
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    kinds.forEach { label ->
+                        androidx.compose.material3.FilterChip(selected = kind == label, onClick = {
+                            kind = label; selectedId = incomes.firstOrNull { it.description == label }?.id
+                            amount = incomes.firstOrNull { it.description == label }?.let { Money.formatPlain(it.amountCents) } ?: ""
+                            payDay = incomes.firstOrNull { it.description == label }?.payDay?.toString() ?: ""
+                            dayError = false
+                        }, label = { Text(label) })
+                    }
+                }
+                MoneyField(amount, { amount = it; error = false }, "Valor mensal (R$)")
+                NumberField(payDay, { payDay = it; dayError = false }, "Dia em que cai na conta (opcional)")
+                Text("Com o dia informado, o app calcula quanto você pode gastar por dia até o próximo pagamento.", style = MaterialTheme.typography.bodySmall)
+                if (dayError) Text("O dia deve ser de 1 a 31.", color = MaterialTheme.colorScheme.error)
+                if (error) Text("Digite um valor válido, por exemplo 3.500,00.", color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                val cents = Money.parse(text)
-                if (cents == null) error = true else onSave(cents)
-            }) { Text("Salvar") }
+                val cents = Money.parse(amount)
+                val day = payDay.trim().toIntOrNull()
+                if (cents == null || cents <= 0) error = true
+                else if (payDay.isNotBlank() && (day == null || day !in 1..31)) dayError = true
+                else {
+                    val existing = incomes.firstOrNull { it.description == kind }
+                    onSave(IncomeEntity(id = selectedId ?: existing?.id ?: 0L, description = kind, amountCents = cents, payDay = if (payDay.isBlank()) null else day))
+                    selectedId = null; amount = ""; payDay = ""
+                }
+            }) { Text("Adicionar/atualizar") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Concluir") } },
     )
 }
 
@@ -289,9 +378,9 @@ private fun OnboardingCard(
     AppCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Primeiros passos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            StepRow(hasSalary, "Informe seu salário", "Informar", onSalary)
+            StepRow(hasSalary, "Informe renda e benefícios", "Informar", onSalary)
             StepRow(hasBills, "Cadastre suas contas (aluguel, luz, mercado...)", "Cadastrar", onBills)
-            StepRow(hasInstallments, "Cadastre compras parceladas (se tiver)", "Cadastrar", onInstallments)
+            StepRow(hasInstallments, "Registre compras, à vista ou parceladas", "Cadastrar", onInstallments)
         }
     }
 }

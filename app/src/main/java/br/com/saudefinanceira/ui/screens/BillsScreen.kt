@@ -1,5 +1,6 @@
 package br.com.saudefinanceira.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,8 @@ import br.com.saudefinanceira.data.BillEntryEntity
 import br.com.saudefinanceira.data.BillType
 import br.com.saudefinanceira.domain.BillStats
 import br.com.saudefinanceira.domain.BillStatsCalc
+import br.com.saudefinanceira.domain.PaymentPlan
+import br.com.saudefinanceira.domain.Priority
 import br.com.saudefinanceira.ui.FinanceViewModel
 import br.com.saudefinanceira.ui.components.AppCard
 import br.com.saudefinanceira.ui.components.EmptyState
@@ -58,6 +63,7 @@ import kotlin.math.abs
 fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val bills by vm.bills.collectAsStateWithLifecycle()
     val entries by vm.entries.collectAsStateWithLifecycle()
+    val snap by vm.snapshot.collectAsStateWithLifecycle()
     var tab by remember { mutableIntStateOf(0) }
     var creating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<BillEntity?>(null) }
@@ -69,20 +75,32 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val type = if (tab == 0) BillType.FIXED else BillType.VARIABLE
     val list = bills.filter { it.type == type }
     val total = list.sumOf { it.amountCents }
+    // Renda em dinheiro que sobra para as contas, depois de descontar parcelas e acordos de dívidas.
+    val availableForBills = snap.incomeCents - snap.installmentsCents - snap.debtPaymentsCents
 
     Box(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxSize()) {
             ScreenHeader(
-                title = if (tab == 0) "Contas fixas" else "Contas variáveis",
-                value = Money.format(total),
-                caption = if (tab == 0) "Todo mês, por tempo indeterminado"
-                else "Atualize o valor de cada conta a cada mês",
+                title = when (tab) {
+                    0 -> "Contas fixas"
+                    1 -> "Contas variáveis"
+                    else -> "O que pagar primeiro"
+                },
+                value = Money.format(if (tab == 2) availableForBills.coerceAtLeast(0L) else total),
+                caption = when (tab) {
+                    0 -> "Todo mês, por tempo indeterminado"
+                    1 -> "Atualize o valor de cada conta a cada mês"
+                    else -> "Renda disponível para contas, já descontadas parcelas e acordos"
+                },
             )
             TabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Fixas") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Variáveis") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Ordem") })
             }
-            if (list.isEmpty()) {
+            if (tab == 2) {
+                PaymentOrderList(bills, availableForBills, snap.incomeCents > 0L)
+            } else if (list.isEmpty()) {
                 EmptyState(
                     title = if (tab == 0) "Nenhuma conta fixa" else "Nenhuma conta variável",
                     text = if (tab == 0) "Toque em + para adicionar aluguel, internet, assinaturas..."
@@ -107,10 +125,12 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                 }
             }
         }
-        FloatingActionButton(
-            onClick = { creating = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar conta") }
+        if (tab != 2) {
+            FloatingActionButton(
+                onClick = { creating = true },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar conta") }
+        }
     }
 
     if (creating) {
@@ -140,6 +160,70 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 }
 
 @Composable
+private fun PaymentOrderList(bills: List<BillEntity>, availableCents: Long, hasIncome: Boolean) {
+    if (bills.isEmpty()) {
+        EmptyState(
+            title = "Nenhuma conta cadastrada",
+            text = "Cadastre suas contas nas abas Fixas e Variáveis para ver em que ordem pagar.",
+        )
+        return
+    }
+    val plan = PaymentPlan.build(bills, availableCents)
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    when {
+                        !hasIncome -> "Informe sua renda na tela Início para ver até onde o dinheiro chega."
+                        plan.uncoveredCount == 0 -> "Sua renda cobre todas as contas, com ${Money.format(plan.leftoverCents)} de folga."
+                        else -> "O dinheiro cobre ${plan.coveredCount} de ${plan.steps.size} contas. Pague de cima para baixo e fale com quem cobra as que ficarem sem cobertura antes do vencimento."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    "Essenciais primeiro (moradia, luz, água, comida, transporte), depois as importantes e, por último, as que podem esperar. Mude a prioridade tocando na conta.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        items(plan.steps.size) { index ->
+            val step = plan.steps[index]
+            AppCard(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("${index + 1}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(step.bill.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            Priority.label(step.bill.priority) + (step.bill.dueDay?.let { " · vence dia $it" } ?: ""),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (hasIncome) {
+                            Text(
+                                if (step.covered) "✓ Dinheiro garantido" else "Faltam ${Money.format(step.missingCents)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (step.covered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    Text(Money.format(step.bill.amountCents), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun BillRow(bill: BillEntity, stats: BillStats?, onClick: () -> Unit, onDelete: () -> Unit, onHistory: () -> Unit) {
     AppCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(
@@ -149,7 +233,7 @@ private fun BillRow(bill: BillEntity, stats: BillStats?, onClick: () -> Unit, on
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(bill.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    bill.dueDay?.let { "Vence dia $it" } ?: "Sem vencimento definido",
+                    Priority.label(bill.priority) + " · " + (bill.dueDay?.let { "vence dia $it" } ?: "sem vencimento definido"),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -294,6 +378,8 @@ private fun BillDialog(bill: BillEntity?, type: BillType, onDismiss: () -> Unit,
     var name by remember { mutableStateOf(bill?.name ?: "") }
     var amount by remember { mutableStateOf(bill?.let { Money.formatPlain(it.amountCents) } ?: "") }
     var day by remember { mutableStateOf(bill?.dueDay?.toString() ?: "") }
+    var priority by remember { mutableStateOf(bill?.priority ?: Priority.IMPORTANT) }
+    var priorityTouched by remember { mutableStateOf(bill != null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
@@ -303,7 +389,11 @@ private fun BillDialog(bill: BillEntity?, type: BillType, onDismiss: () -> Unit,
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it; error = null },
+                    onValueChange = {
+                        name = it
+                        error = null
+                        if (!priorityTouched) priority = Priority.suggest(it)
+                    },
                     label = { Text("Nome (ex.: Aluguel)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -314,6 +404,16 @@ private fun BillDialog(bill: BillEntity?, type: BillType, onDismiss: () -> Unit,
                     label = if (type == BillType.FIXED) "Valor mensal (R$)" else "Valor deste mês (R$)",
                 )
                 NumberField(day, { day = it; error = null }, "Dia de vencimento (opcional)")
+                Text("Prioridade: o que pagar primeiro quando o dinheiro não dá para tudo", style = MaterialTheme.typography.bodySmall)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(Priority.ESSENTIAL, Priority.IMPORTANT, Priority.FLEXIBLE).forEach { p ->
+                        FilterChip(
+                            selected = priority == p,
+                            onClick = { priority = p; priorityTouched = true },
+                            label = { Text(Priority.label(p)) },
+                        )
+                    }
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         },
@@ -329,7 +429,7 @@ private fun BillDialog(bill: BillEntity?, type: BillType, onDismiss: () -> Unit,
                     error = "O dia deve ser de 1 a 31."
                 } else {
                     val base = bill ?: BillEntity(name = "", type = type, amountCents = 0L)
-                    onSave(base.copy(name = name.trim(), amountCents = cents, dueDay = if (day.isBlank()) null else d))
+                    onSave(base.copy(name = name.trim(), amountCents = cents, dueDay = if (day.isBlank()) null else d, priority = priority))
                 }
             }) { Text("Salvar") }
         },

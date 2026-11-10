@@ -7,9 +7,11 @@ import br.com.saudefinanceira.data.AppDatabase
 import br.com.saudefinanceira.data.BillEntity
 import br.com.saudefinanceira.data.BillEntryEntity
 import br.com.saudefinanceira.data.BillType
+import br.com.saudefinanceira.data.DebtEntity
 import br.com.saudefinanceira.data.GoalEntity
 import br.com.saudefinanceira.data.IncomeEntity
 import br.com.saudefinanceira.data.MonthSnapshotEntity
+import br.com.saudefinanceira.data.QuickExpenseEntity
 import br.com.saudefinanceira.data.InstallmentEntity
 import br.com.saudefinanceira.domain.BillStatsCalc
 import br.com.saudefinanceira.domain.InstallmentCalc
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.YearMonth
 
 class FinanceViewModel(db: AppDatabase) : ViewModel() {
@@ -28,14 +31,29 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
         dao.observeIncome(),
         dao.observeBills(),
         dao.observeInstallments(),
-    ) { income, bills, installments ->
+        dao.observeDebts(),
+    ) { income, bills, installments, debts ->
+        val now = YearMonth.now()
+        val benefits = income.filter { it.description.uppercase() in setOf("VR", "VM") }
+        val benefitPurchases = installments.filter { it.paymentMethod.uppercase() in setOf("VR", "VM") }
         Snapshot(
-            incomeCents = income.sumOf { it.amountCents },
+            incomeCents = income.filterNot { it.description.uppercase() in setOf("VR", "VM") }.sumOf { it.amountCents },
             fixedCents = bills.filter { it.type == BillType.FIXED }.sumOf { it.amountCents },
             variableCents = bills.filter { it.type == BillType.VARIABLE }.sumOf { it.amountCents },
-            installmentsCents = InstallmentCalc.monthlyTotal(installments, YearMonth.now()),
+            installmentsCents = InstallmentCalc.monthlyTotal(
+                installments.filterNot { it.paymentMethod.uppercase() in setOf("VR", "VM") }, now,
+            ),
+            benefitIncomeCents = benefits.sumOf { it.amountCents },
+            benefitSpentCents = InstallmentCalc.monthlyTotal(benefitPurchases, now),
+            debtPaymentsCents = debts.sumOf { if (it.balanceCents > 0L) it.plannedPaymentCents else 0L },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Snapshot(0, 0, 0, 0))
+
+    val incomes: StateFlow<List<IncomeEntity>> =
+        dao.observeIncome().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val debts: StateFlow<List<DebtEntity>> =
+        dao.observeDebts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val bills: StateFlow<List<BillEntity>> =
         dao.observeBills().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -45,6 +63,9 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
 
     val entries: StateFlow<List<BillEntryEntity>> =
         dao.observeEntries().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val quickExpenses: StateFlow<List<QuickExpenseEntity>> =
+        dao.observeQuickExpenses().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val goals: StateFlow<List<GoalEntity>> =
         dao.observeGoals().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -104,6 +125,7 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
                             fixedCents = s.fixedCents,
                             variableCents = s.variableCents,
                             installmentsCents = s.installmentsCents,
+                            debtPaymentsCents = s.debtPaymentsCents,
                         )
                     )
                 }
@@ -111,8 +133,20 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
         }
     }
 
-    fun saveSalary(cents: Long) {
-        viewModelScope.launch { dao.upsertIncome(IncomeEntity(id = 1, description = "Salário", amountCents = cents)) }
+    fun saveIncome(income: IncomeEntity) {
+        viewModelScope.launch { dao.upsertIncome(income) }
+    }
+
+    fun deleteIncome(income: IncomeEntity) {
+        viewModelScope.launch { dao.deleteIncome(income) }
+    }
+
+    fun saveDebt(debt: DebtEntity) {
+        viewModelScope.launch { if (debt.id == 0L) dao.insertDebt(debt) else dao.updateDebt(debt) }
+    }
+
+    fun deleteDebt(debt: DebtEntity) {
+        viewModelScope.launch { dao.deleteDebt(debt) }
     }
 
     fun saveBill(bill: BillEntity) {
@@ -152,6 +186,26 @@ class FinanceViewModel(db: AppDatabase) : ViewModel() {
 
     fun deleteInstallment(item: InstallmentEntity) {
         viewModelScope.launch { dao.deleteInstallment(item) }
+    }
+
+    /** Registra um gasto do dia a dia na data de hoje. */
+    fun addQuickExpense(amountCents: Long, note: String) {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            dao.insertQuickExpense(
+                QuickExpenseEntity(
+                    amountCents = amountCents,
+                    note = note.trim().take(60),
+                    year = today.year,
+                    month = today.monthValue,
+                    day = today.dayOfMonth,
+                )
+            )
+        }
+    }
+
+    fun deleteQuickExpense(item: QuickExpenseEntity) {
+        viewModelScope.launch { dao.deleteQuickExpense(item.id) }
     }
 
     fun saveGoal(goal: GoalEntity) {

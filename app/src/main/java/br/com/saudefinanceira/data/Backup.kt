@@ -18,11 +18,13 @@ object Backup {
         val entries: List<BillEntryEntity>,
         val goals: List<GoalEntity> = emptyList(),
         val snapshots: List<MonthSnapshotEntity> = emptyList(),
+        val debts: List<DebtEntity> = emptyList(),
+        val quickExpenses: List<QuickExpenseEntity> = emptyList(),
     )
 
     suspend fun snapshot(db: AppDatabase): Data {
         val d = db.dao()
-        return Data(d.getIncome(), d.getBills(), d.getInstallments(), d.getEntries(), d.getGoals(), d.getSnapshots())
+        return Data(d.getIncome(), d.getBills(), d.getInstallments(), d.getEntries(), d.getGoals(), d.getSnapshots(), d.getDebts(), d.getQuickExpenses())
     }
 
     suspend fun replaceAll(db: AppDatabase, data: Data) {
@@ -31,6 +33,8 @@ object Backup {
             d.clearEntries()
             d.clearGoals()
             d.clearSnapshots()
+            d.clearDebts()
+            d.clearQuickExpenses()
             d.clearBills()
             d.clearInstallments()
             d.clearIncome()
@@ -40,6 +44,8 @@ object Backup {
             d.insertEntries(data.entries)
             d.insertGoals(data.goals)
             d.insertSnapshots(data.snapshots)
+            d.insertDebts(data.debts)
+            d.insertQuickExpenses(data.quickExpenses)
         }
     }
 
@@ -50,7 +56,10 @@ object Backup {
         root.put("exportedAt", System.currentTimeMillis())
         root.put("income", JSONArray().also { arr ->
             data.income.forEach {
-                arr.put(JSONObject().put("id", it.id).put("description", it.description).put("amountCents", it.amountCents))
+                arr.put(
+                    JSONObject().put("id", it.id).put("description", it.description).put("amountCents", it.amountCents)
+                        .put("payDay", it.payDay ?: JSONObject.NULL)
+                )
             }
         })
         root.put("bills", JSONArray().also { arr ->
@@ -59,6 +68,7 @@ object Backup {
                     JSONObject()
                         .put("id", it.id).put("name", it.name).put("type", it.type.name)
                         .put("amountCents", it.amountCents).put("dueDay", it.dueDay ?: JSONObject.NULL)
+                        .put("priority", it.priority)
                 )
             }
         })
@@ -69,6 +79,7 @@ object Backup {
                         .put("id", it.id).put("description", it.description).put("totalCents", it.totalCents)
                         .put("installments", it.installments).put("firstYear", it.firstYear)
                         .put("firstMonth", it.firstMonth).put("card", it.card ?: JSONObject.NULL)
+                        .put("paymentMethod", it.paymentMethod)
                 )
             }
         })
@@ -90,6 +101,23 @@ object Backup {
                 )
             }
         })
+        root.put("debts", JSONArray().also { arr ->
+            data.debts.forEach { debt ->
+                arr.put(JSONObject().put("id", debt.id).put("creditor", debt.creditor).put("description", debt.description)
+                    .put("balanceCents", debt.balanceCents).put("monthlyInterestBasisPoints", debt.monthlyInterestBasisPoints)
+                    .put("dueDay", debt.dueDay ?: JSONObject.NULL).put("isNegative", debt.isNegative)
+                    .put("plannedPaymentCents", debt.plannedPaymentCents))
+            }
+        })
+        root.put("quickExpenses", JSONArray().also { arr ->
+            data.quickExpenses.forEach {
+                arr.put(
+                    JSONObject()
+                        .put("id", it.id).put("amountCents", it.amountCents).put("note", it.note)
+                        .put("year", it.year).put("month", it.month).put("day", it.day)
+                )
+            }
+        })
         root.put("monthSnapshots", JSONArray().also { arr ->
             data.snapshots.forEach {
                 arr.put(
@@ -97,6 +125,7 @@ object Backup {
                         .put("id", it.id).put("year", it.year).put("month", it.month)
                         .put("incomeCents", it.incomeCents).put("fixedCents", it.fixedCents)
                         .put("variableCents", it.variableCents).put("installmentsCents", it.installmentsCents)
+                        .put("debtPaymentsCents", it.debtPaymentsCents)
                 )
             }
         })
@@ -118,17 +147,22 @@ object Backup {
         require(root.getInt("format") == FORMAT) { "Versão de backup não suportada." }
 
         val income = root.getJSONArray("income").objects().map {
-            IncomeEntity(it.getLong("id"), it.getString("description").also(::checkText), it.getLong("amountCents").also(::checkCents))
+            val payDay = if (it.isNull("payDay")) null else it.getInt("payDay")
+            require(payDay == null || payDay in 1..31) { "Dia de recebimento inválido." }
+            IncomeEntity(it.getLong("id"), it.getString("description").also(::checkText), it.getLong("amountCents").also(::checkCents), payDay)
         }
         val bills = root.getJSONArray("bills").objects().map {
             val day = if (it.isNull("dueDay")) null else it.getInt("dueDay")
             require(day == null || day in 1..31) { "Dia inválido." }
+            val priority = it.optInt("priority", 1)
+            require(priority in 0..2) { "Prioridade inválida." }
             BillEntity(
                 id = it.getLong("id"),
                 name = it.getString("name").also(::checkText),
                 type = BillType.valueOf(it.getString("type")),
                 amountCents = it.getLong("amountCents").also(::checkCents),
                 dueDay = day,
+                priority = priority,
             )
         }
         val installments = root.getJSONArray("installments").objects().map {
@@ -144,6 +178,7 @@ object Backup {
                 firstYear = year,
                 firstMonth = month,
                 card = if (it.isNull("card")) null else it.getString("card").also(::checkText),
+                paymentMethod = it.optString("paymentMethod", "Cartão de crédito").also(::checkText),
             )
         }
         val entries = root.getJSONArray("entries").objects().map {
@@ -182,8 +217,36 @@ object Backup {
                 fixedCents = it.getLong("fixedCents").also(::checkCents),
                 variableCents = it.getLong("variableCents").also(::checkCents),
                 installmentsCents = it.getLong("installmentsCents").also(::checkCents),
+                debtPaymentsCents = it.optLong("debtPaymentsCents", 0).also(::checkCents),
             )
         }
+        val debts = (root.optJSONArray("debts")?.objects() ?: emptyList()).map { o ->
+            val dueDay = if (o.isNull("dueDay")) null else o.getInt("dueDay")
+            val rate = o.optInt("monthlyInterestBasisPoints", 0)
+            require(dueDay == null || dueDay in 1..31) { "Vencimento de dívida inválido." }
+            require(rate in 0..100_000) { "Taxa de dívida inválida." }
+            DebtEntity(o.getLong("id"), o.getString("creditor").also(::checkText),
+                o.getString("description").also(::checkText), o.getLong("balanceCents").also(::checkCents), rate,
+                dueDay, o.optBoolean("isNegative", false), o.optLong("plannedPaymentCents", 0).also(::checkCents))
+        }
+        // Backups antigos (sem gastos rápidos) continuam válidos.
+        val quickExpenses = (root.optJSONArray("quickExpenses")?.objects() ?: emptyList()).map {
+            val year = it.getInt("year")
+            val month = it.getInt("month")
+            val day = it.getInt("day")
+            require(year in 1990..2200 && month in 1..12 && day in 1..31) { "Gasto rápido inválido." }
+            require(runCatching { java.time.LocalDate.of(year, month, day) }.isSuccess) { "Data de gasto rápido inválida." }
+            QuickExpenseEntity(
+                id = it.getLong("id"),
+                amountCents = it.getLong("amountCents").also(::checkCents),
+                note = it.getString("note").also(::checkText),
+                year = year,
+                month = month,
+                day = day,
+            )
+        }
+        require(quickExpenses.map { it.id }.toSet().size == quickExpenses.size) { "IDs de gastos rápidos repetidos." }
+        require(debts.map { it.id }.toSet().size == debts.size) { "IDs de dívidas repetidos." }
         require(snapshots.map { it.id }.toSet().size == snapshots.size) { "IDs repetidos." }
         require(snapshots.map { it.year to it.month }.toSet().size == snapshots.size) { "Histórico mensal repetido." }
 
@@ -195,6 +258,8 @@ object Backup {
         val billIds = bills.map { it.id }.toSet()
         require(entries.all { it.billId in billIds }) { "Histórico sem conta correspondente." }
         require(entries.map { Triple(it.billId, it.year, it.month) }.toSet().size == entries.size) { "Histórico repetido." }
-        return Data(income, bills, installments, entries, goals, snapshots)
+        return Data(income, bills, installments, entries, goals, snapshots, debts, quickExpenses)
     }
 }
+
+
