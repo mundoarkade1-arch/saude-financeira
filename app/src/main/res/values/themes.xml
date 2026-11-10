@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.SaudeFinanceira" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.SaudeFinanceira" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/warm_ivory</item>
+        <item name="android:statusBarColor">@color/sage_green_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorPrimary">@color/sage_green</item>
+        <item name="android:colorAccent">@color/vermilion_red</item>
+    </style>
 </resources>

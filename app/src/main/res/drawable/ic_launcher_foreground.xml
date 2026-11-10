@@ -4,27 +4,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Clean white medallion keeps the brand mark legible against the app gradient. -->
+    <!-- Medalhão em marfim sobre o fundo verde-sálvia. -->
     <path
-        android:fillColor="#F4FBFF"
-        android:strokeColor="#D7E5FF"
+        android:fillColor="#F1EEE3"
+        android:strokeColor="#D9D4C2"
         android:strokeWidth="2.5"
         android:pathData="M54,24 A30,30 0,1 0,54 84 A30,30 0,1 0,54 24 Z" />
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#0FA39A"
+        android:strokeColor="#4B5A50"
         android:strokeWidth="1.5"
         android:pathData="M54,30 A24,24 0,1 0,54 78 A24,24 0,1 0,54 30 Z" />
-    <!-- Rising bars and arrow use the same teal-to-blue identity as the interface. -->
+    <!-- Barras crescentes: as duas primeiras em verde-sálvia, a última em vermelhão. -->
     <path
-        android:fillColor="#0B8F87"
+        android:fillColor="#4B5A50"
         android:pathData="M37,62 L44,62 L44,69 L37,69 Z M49,53 L56,53 L56,69 L49,69 Z" />
     <path
-        android:fillColor="#2F6FDB"
+        android:fillColor="#F20B0B"
         android:pathData="M61,44 L68,44 L68,69 L61,69 Z" />
+    <!-- Seta de crescimento em vermelhão. -->
     <path
         android:fillColor="#00000000"
-        android:strokeColor="#2F6FDB"
+        android:strokeColor="#F20B0B"
         android:strokeWidth="3.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
