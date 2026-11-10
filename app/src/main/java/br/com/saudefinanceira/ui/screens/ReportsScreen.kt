@@ -54,7 +54,7 @@ fun ReportsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     val totals = selected.fold(ReportTotals()) { acc, item ->
         acc.copy(
             income = acc.income + item.incomeCents,
-            expenses = acc.expenses + item.fixedCents + item.variableCents + item.installmentsCents,
+            expenses = acc.expenses + item.fixedCents + item.variableCents + item.installmentsCents + item.debtPaymentsCents,
         )
     }
 
@@ -101,13 +101,14 @@ fun ReportsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                     }
                 }
                 items(selected, key = { "${it.year}-${it.month}" }) { item ->
-                    val expenses = item.fixedCents + item.variableCents + item.installmentsCents
+                    val expenses = item.fixedCents + item.variableCents + item.installmentsCents + item.debtPaymentsCents
                     AppCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text("%02d/%d".format(item.month, item.year), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text("Renda  ${Money.format(item.incomeCents)}")
                             Text("Fixas ${Money.format(item.fixedCents)}  ·  Variáveis ${Money.format(item.variableCents)}")
-                            Text("Parcelas ${Money.format(item.installmentsCents)}  ·  Gastos ${Money.format(expenses)}")
+                            Text("Parcelas ${Money.format(item.installmentsCents)}  ·  Acordos ${Money.format(item.debtPaymentsCents)}")
+                            Text("Gastos ${Money.format(expenses)}")
                             Text("Sobra  ${Money.format(item.incomeCents - expenses)}", fontWeight = FontWeight.SemiBold)
                         }
                     }

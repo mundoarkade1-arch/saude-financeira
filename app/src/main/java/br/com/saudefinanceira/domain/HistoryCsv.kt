@@ -13,15 +13,16 @@ object HistoryCsv {
             .sortedWith(compareBy<MonthSnapshotEntity> { it.year }.thenBy { it.month })
         return buildString {
             append('\uFEFF')
-            appendLine("Mês;Renda;Contas fixas;Contas variáveis;Parcelas;Gastos totais;Sobra")
+            appendLine("Mês;Renda;Contas fixas;Contas variáveis;Parcelas;Acordos de dívidas;Gastos totais;Sobra")
             months.forEach { item ->
-                val total = item.fixedCents + item.variableCents + item.installmentsCents
+                val total = item.fixedCents + item.variableCents + item.installmentsCents + item.debtPaymentsCents
                 val balance = item.incomeCents - total
                 append(YearMonth.of(item.year, item.month)).append(';')
                     .append(decimal(item.incomeCents)).append(';')
                     .append(decimal(item.fixedCents)).append(';')
                     .append(decimal(item.variableCents)).append(';')
                     .append(decimal(item.installmentsCents)).append(';')
+                    .append(decimal(item.debtPaymentsCents)).append(';')
                     .append(decimal(total)).append(';')
                     .appendLine(decimal(balance))
             }

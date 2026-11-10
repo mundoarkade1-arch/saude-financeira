@@ -18,8 +18,8 @@ class HistoryCsvTest {
         val csv = HistoryCsv.export(entries, YearMonth.of(2026, 1), YearMonth.of(2026, 2))
 
         assertTrue(csv.startsWith("\uFEFFMês;Renda;"))
-        assertTrue(csv.contains("2026-01;5000,00;1000,00;500,50;250,00;1750,50;3249,50"))
-        assertTrue(csv.contains("2026-02;6000,00;1500,00;750,00;250,00;2500,00;3500,00"))
+        assertTrue(csv.contains("2026-01;5000,00;1000,00;500,50;250,00;0,00;1750,50;3249,50"))
+        assertTrue(csv.contains("2026-02;6000,00;1500,00;750,00;250,00;0,00;2500,00;3500,00"))
         assertFalse(csv.contains("2026-03"))
     }
 

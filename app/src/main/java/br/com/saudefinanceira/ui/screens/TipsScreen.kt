@@ -39,13 +39,13 @@ fun TipsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 
     Column(Modifier.fillMaxSize().padding(padding)) {
         ScreenHeader(
-            title = if (tab == 0) "Dicas para você" else "Suas metas",
-            caption = if (tab == 0) "Orientações gerais calculadas no seu aparelho. Não substituem um profissional."
-            else "Acompanhe quanto já guardou e quando chega lá",
+            title = when (tab) { 0 -> "Dicas para você"; 1 -> "Suas metas"; else -> "Dívidas" },
+            caption = when (tab) { 0 -> "Orientações gerais calculadas no seu aparelho."; 1 -> "Acompanhe quanto já guardou e quando chega lá"; else -> "Registre e organize seus próximos passos" },
         )
         TabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Dicas") })
             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Metas") })
+            Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Dívidas") })
         }
         if (tab == 0) {
             LazyColumn(
@@ -72,8 +72,10 @@ fun TipsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                     }
                 }
             }
-        } else {
+        } else if (tab == 1) {
             GoalsTab(vm)
+        } else {
+            DebtsScreen(vm, PaddingValues(0.dp))
         }
     }
 }

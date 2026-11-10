@@ -17,12 +17,13 @@ object ReminderLogic {
         return next.atDay(minOf(dueDay, next.lengthOfMonth()))
     }
 
-    /** Contas com vencimento hoje ou nos próximos [leadDays] dias, das mais próximas às mais distantes. */
-    fun dueSoon(bills: List<BillEntity>, today: LocalDate, leadDays: Int): List<DueBill> =
+    /** Contas cujo vencimento cai exatamente em um dos dias selecionados. */
+    fun dueSoon(bills: List<BillEntity>, today: LocalDate, alertDays: Set<Int>): List<DueBill> =
         bills.mapNotNull { bill ->
             val day = bill.dueDay ?: return@mapNotNull null
             val due = nextDueDate(day, today)
             val days = ChronoUnit.DAYS.between(today, due)
-            if (days >= 0 && days <= leadDays) DueBill(bill, due, days) else null
+            if (days in alertDays.map(Int::toLong)) DueBill(bill, due, days) else null
         }.sortedBy { it.daysUntil }
 }
+

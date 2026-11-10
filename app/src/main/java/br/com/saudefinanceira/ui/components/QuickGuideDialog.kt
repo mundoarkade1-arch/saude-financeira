@@ -20,9 +20,9 @@ import androidx.compose.ui.unit.dp
 private data class GuidePage(val title: String, val description: String)
 
 private val guidePages = listOf(
-    GuidePage("Navegue pelo app", "A barra inferior leva a Início (resumo do mês), Contas, Parcelas, Dicas e Ajustes. No Início, veja a sobra prevista, os compromissos e a divisão dos gastos."),
+    GuidePage("Navegue pelo app", "A barra inferior leva a Início (resumo do mês), Contas, Compras, Planejar e Ajustes. No Início, veja a sobra prevista, os compromissos e a divisão dos gastos."),
     GuidePage("Contas", "Cadastre contas fixas, como aluguel, e variáveis, como luz e mercado. Em Contas variáveis, toque em Histórico para corrigir ou incluir um mês."),
-    GuidePage("Parcelas", "Informe o valor total, a quantidade e o mês da primeira parcela. O app calcula o andamento e o impacto nos próximos meses; faturas por cartão aparecem nessa mesma tela."),
+    GuidePage("Parcelas", "Registre compras à vista, no cartão, crediário, VR ou VM. Nas parceladas, informe quantidade e parcela atual; acompanhe saldo, andamento e faturas do cartão."),
     GuidePage("Dicas e metas", "As dicas ajudam a interpretar seus números. Em Metas, acompanhe objetivos e registre o quanto já guardou."),
     GuidePage("Relatórios e ajustes", "No Início, abra Relatórios para comparar períodos e exportar CSV. Em Ajustes, configure lembretes, atualização e backup."),
 )

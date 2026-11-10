@@ -58,7 +58,7 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
 
     val reminderPrefs = remember { ReminderPrefs(context) }
     var remindersOn by remember { mutableStateOf(reminderPrefs.enabled) }
-    var leadDays by remember { mutableIntStateOf(reminderPrefs.leadDays) }
+    var alertDays by remember { mutableStateOf(reminderPrefs.alertDays) }
     var reminderProblem by remember { mutableStateOf(false) }
 
     fun enableReminders() {
@@ -170,7 +170,7 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
                         Column(Modifier.weight(1f)) {
                             Text("Lembretes de vencimento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             Text(
-                                "Aviso por volta das 9h para contas que têm dia de vencimento.",
+                                "Avisos por volta das 9h, 5 e 2 dias antes e no dia do vencimento. Você pode escolher quais receber.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -196,10 +196,13 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
                     if (remindersOn) {
                         Text("Avisar:", style = MaterialTheme.typography.bodyMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf(0 to "No dia", 1 to "1 dia antes", 3 to "3 dias antes").forEach { (days, label) ->
+                            listOf(5 to "5 dias", 2 to "2 dias", 0 to "No dia").forEach { (days, label) ->
                                 FilterChip(
-                                    selected = leadDays == days,
-                                    onClick = { leadDays = days; reminderPrefs.leadDays = days },
+                                    selected = days in alertDays,
+                                    onClick = {
+                                        alertDays = if (days in alertDays) alertDays - days else alertDays + days
+                                        reminderPrefs.alertDays = alertDays
+                                    },
                                     label = { Text(label) },
                                 )
                             }
@@ -268,3 +271,4 @@ fun SettingsScreen(update: UpdateViewModel, backup: BackupViewModel, padding: Pa
         )
     }
 }
+

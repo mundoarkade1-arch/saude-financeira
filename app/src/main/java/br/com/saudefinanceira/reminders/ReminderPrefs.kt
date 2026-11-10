@@ -11,10 +11,11 @@ class ReminderPrefs(context: Context) {
         get() = sp.getBoolean("enabled", false)
         set(value) { sp.edit().putBoolean("enabled", value).apply() }
 
-    /** Quantos dias antes do vencimento avisar (0 = só no dia). */
-    var leadDays: Int
-        get() = sp.getInt("leadDays", 1)
-        set(value) { sp.edit().putInt("leadDays", value).apply() }
+    /** Dias exatos em que o app avisa: 5, 2 e 0 (dia do vencimento). */
+    var alertDays: Set<Int>
+        get() = (sp.getStringSet("alertDays", null) ?: setOf("5", "2", "0"))
+            .mapNotNull { it.toIntOrNull() }.filter { it in 0..31 }.toSet()
+        set(value) { sp.edit().putStringSet("alertDays", value.map(Int::toString).toSet()).apply() }
 
     /** Registra a chave e devolve true se ela ainda não tinha sido avisada. Limpa chaves com mais de 60 dias. */
     fun markIfNew(key: String, today: LocalDate): Boolean {
@@ -22,7 +23,7 @@ class ReminderPrefs(context: Context) {
         if (key in set) return false
         set.removeAll { old ->
             try {
-                LocalDate.parse(old.substringAfter('|')).isBefore(today.minusDays(60))
+                LocalDate.parse(old.split('|').getOrNull(1) ?: "").isBefore(today.minusDays(60))
             } catch (e: Exception) {
                 true
             }
@@ -32,3 +33,4 @@ class ReminderPrefs(context: Context) {
         return true
     }
 }
+

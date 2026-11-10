@@ -11,8 +11,11 @@ data class Snapshot(
     val fixedCents: Long,
     val variableCents: Long,
     val installmentsCents: Long,
+    val benefitIncomeCents: Long = 0,
+    val benefitSpentCents: Long = 0,
+    val debtPaymentsCents: Long = 0,
 ) {
-    val spentCents: Long get() = fixedCents + variableCents + installmentsCents
+    val spentCents: Long get() = fixedCents + variableCents + installmentsCents + debtPaymentsCents
     val balanceCents: Long get() = incomeCents - spentCents
 }
 
@@ -21,7 +24,7 @@ object TipEngine {
     fun generate(s: Snapshot, risingBills: List<Pair<String, Int>> = emptyList()): List<Tip> {
         if (s.incomeCents <= 0) {
             return listOf(
-                Tip("Comece pelo salário", "Informe sua renda mensal na tela Início para receber dicas personalizadas.", TipLevel.INFO)
+                Tip("Comece pela renda", "Informe suas fontes de renda e benefícios na tela Início para receber dicas baseadas no orçamento disponível.", TipLevel.INFO)
             )
         }
         val tips = mutableListOf<Tip>()
@@ -35,16 +38,16 @@ object TipEngine {
             )
         }
 
-        val committed = (s.fixedCents + s.installmentsCents) / income
+        val committed = (s.fixedCents + s.installmentsCents + s.debtPaymentsCents) / income
         when {
             committed > 0.5 -> tips += Tip(
                 "Compromissos muito altos",
-                "Contas fixas e parcelas consomem ${(committed * 100).toInt()}% da renda. Acima de 50% fica difícil absorver imprevistos.",
+                "Contas fixas, parcelas e acordos de dívidas consomem ${(committed * 100).toInt()}% da renda. Acima de 50% fica difícil absorver imprevistos.",
                 TipLevel.ALERT,
             )
             committed > 0.35 -> tips += Tip(
                 "Atenção aos compromissos",
-                "Contas fixas e parcelas somam ${(committed * 100).toInt()}% da renda. O ideal é ficar abaixo de 35%.",
+                "Contas fixas, parcelas e acordos de dívidas somam ${(committed * 100).toInt()}% da renda. O ideal é ficar abaixo de 35%.",
                 TipLevel.WARNING,
             )
         }

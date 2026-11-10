@@ -40,7 +40,7 @@ class ReminderLogicTest {
             bill(3, "C", 5),    // 7 dias
             bill(4, "D", null), // sem vencimento
         )
-        val result = ReminderLogic.dueSoon(bills, today, leadDays = 1)
+        val result = ReminderLogic.dueSoon(bills, today, alertDays = setOf(0, 1))
         assertEquals(listOf("B", "A"), result.map { it.bill.name })
         assertEquals(listOf(0L, 1L), result.map { it.daysUntil })
     }
@@ -48,7 +48,7 @@ class ReminderLogicTest {
     @Test
     fun leadZeroOnlyToday() {
         val today = LocalDate.of(2026, 10, 29)
-        val result = ReminderLogic.dueSoon(listOf(bill(1, "A", 30), bill(2, "B", 29)), today, leadDays = 0)
+        val result = ReminderLogic.dueSoon(listOf(bill(1, "A", 30), bill(2, "B", 29)), today, alertDays = setOf(0))
         assertEquals(listOf("B"), result.map { it.bill.name })
     }
 }

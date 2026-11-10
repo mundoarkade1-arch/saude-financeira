@@ -46,8 +46,8 @@ import br.com.saudefinanceira.update.UpdateViewModel
 enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Home("inicio", "Início", Icons.Filled.Home),
     Bills("contas", "Contas", Icons.AutoMirrored.Filled.List),
-    Installments("parcelas", "Parcelas", Icons.Filled.ShoppingCart),
-    Tips("dicas", "Dicas", Icons.Filled.Info),
+    Installments("parcelas", "Compras", Icons.Filled.ShoppingCart),
+    Tips("dicas", "Planejar", Icons.Filled.Info),
     Settings("ajustes", "Ajustes", Icons.Filled.Settings),
 }
 

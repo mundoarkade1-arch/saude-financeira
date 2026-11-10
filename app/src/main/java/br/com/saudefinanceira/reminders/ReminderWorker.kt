@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import br.com.saudefinanceira.FinanceApp
+import br.com.saudefinanceira.data.BillEntity
+import br.com.saudefinanceira.data.BillType
 import br.com.saudefinanceira.domain.DueBill
 import br.com.saudefinanceira.domain.ReminderLogic
 import br.com.saudefinanceira.util.Money
@@ -17,9 +19,20 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         if (!prefs.enabled || !Notifier.hasPermission(ctx)) return Result.success()
 
         val today = LocalDate.now()
-        val bills = (ctx as FinanceApp).db.dao().getBills()
-        val due = ReminderLogic.dueSoon(bills, today, prefs.leadDays)
-            .filter { prefs.markIfNew("${it.bill.id}|${it.dueDate}", today) }
+        val dao = (ctx as FinanceApp).db.dao()
+        val debtBills = dao.getDebts().filter { it.balanceCents > 0L }.mapNotNull { debt ->
+            val day = debt.dueDay ?: return@mapNotNull null
+            BillEntity(
+                id = -debt.id,
+                name = "Dívida • ${debt.creditor}",
+                type = BillType.FIXED,
+                amountCents = debt.plannedPaymentCents.takeIf { it > 0 } ?: debt.balanceCents,
+                dueDay = day,
+            )
+        }
+        val bills = dao.getBills() + debtBills
+        val due = ReminderLogic.dueSoon(bills, today, prefs.alertDays)
+            .filter { prefs.markIfNew("${it.bill.id}|${it.dueDate}|${it.daysUntil}", today) }
         if (due.isEmpty()) return Result.success()
 
         val title = if (due.size == 1) "Conta perto do vencimento" else "${due.size} contas perto do vencimento"
@@ -36,3 +49,4 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         return "${d.bill.name} $whenText · ${Money.format(d.bill.amountCents)}"
     }
 }
+

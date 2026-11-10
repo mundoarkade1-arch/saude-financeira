@@ -7,7 +7,7 @@ data class MonthBalance(val month: YearMonth, val balanceCents: Long)
 
 object HistoryCalc {
     fun balanceOf(e: MonthSnapshotEntity): Long =
-        e.incomeCents - e.fixedCents - e.variableCents - e.installmentsCents
+        e.incomeCents - e.fixedCents - e.variableCents - e.installmentsCents - e.debtPaymentsCents
 
     /** Os últimos [limit] meses registrados, em ordem cronológica. */
     fun recent(entries: List<MonthSnapshotEntity>, limit: Int = 6): List<MonthBalance> =

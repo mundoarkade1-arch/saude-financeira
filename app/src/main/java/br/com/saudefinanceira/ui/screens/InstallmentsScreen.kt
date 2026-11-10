@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -64,14 +66,14 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
     Box(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxSize()) {
             ScreenHeader(
-                title = "Parcelas do mês",
+                title = "Compras e parcelas",
                 value = Money.format(monthly),
                 caption = "Ainda falta pagar ${Money.format(remaining)} no total",
             )
             if (rows.isEmpty()) {
                 EmptyState(
-                    title = "Nenhuma compra parcelada",
-                    text = "Toque em + para adicionar, por exemplo, um micro-ondas em 12 vezes ou uma compra no cartão em 10 vezes.",
+                    title = "Nenhuma compra registrada",
+                    text = "Toque em + para registrar uma compra à vista, no cartão, crediário, VR ou VM.",
                 )
             } else {
                 LazyColumn(
@@ -90,7 +92,7 @@ fun InstallmentsScreen(vm: FinanceViewModel, padding: PaddingValues) {
         FloatingActionButton(
             onClick = { creating = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar compra parcelada") }
+        ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar compra") }
     }
 
     if (creating) {
@@ -129,9 +131,11 @@ private fun InstallmentCard(item: InstallmentEntity, st: InstallmentStatus, onCl
                 Column(Modifier.weight(1f)) {
                     Text(item.description, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     val card = item.card
-                    if (!card.isNullOrBlank()) {
-                        Text(card, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(
+                        listOfNotNull(item.paymentMethod, card?.takeIf { it.isNotBlank() }).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = "Excluir") }
             }
@@ -163,11 +167,12 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
     var parcels by remember { mutableStateOf(item?.installments?.toString() ?: "") }
     var current by remember { mutableStateOf(st?.current?.coerceAtLeast(1)?.toString() ?: "1") }
     var card by remember { mutableStateOf(item?.card ?: "") }
+    var paymentMethod by remember { mutableStateOf(item?.paymentMethod ?: "Cartão de crédito") }
     var error by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (item == null) "Nova compra parcelada" else "Editar compra parcelada") },
+        title = { Text(if (item == null) "Nova compra" else "Editar compra") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -177,7 +182,7 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (paymentMethod !in setOf("À vista", "VR", "VM")) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = !byParcel, onClick = { byParcel = false }, label = { Text("Valor total") })
                     FilterChip(selected = byParcel, onClick = { byParcel = true }, label = { Text("Valor da parcela") })
                 }
@@ -186,14 +191,26 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
                     onValueChange = { amount = it; error = null },
                     label = if (byParcel) "Valor de cada parcela (R$)" else "Valor total (R$)",
                 )
-                NumberField(parcels, { parcels = it; error = null }, "Número de parcelas")
-                if (!lockStart) {
+                if (paymentMethod in setOf("À vista", "VR", "VM")) Text("Compra registrada como um único pagamento neste mês.", style = MaterialTheme.typography.bodySmall)
+                else NumberField(parcels, { parcels = it; error = null }, "Número de parcelas")
+                if (!lockStart && paymentMethod !in setOf("À vista", "VR", "VM")) {
                     NumberField(current, { current = it; error = null }, "Em qual parcela você está agora?")
                 }
-                OutlinedTextField(
+                Text("Como pagou?", style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("À vista", "Cartão de crédito", "Crediário", "VR", "VM").forEach { option ->
+                        val label = if (option == "Cartão de crédito") "Cartão" else option
+                        FilterChip(selected = paymentMethod == option, onClick = {
+                            paymentMethod = option
+                            error = null
+                            if (option in setOf("À vista", "VR", "VM")) { parcels = "1"; byParcel = false }
+                        }, label = { Text(label) })
+                    }
+                }
+                if (paymentMethod in setOf("Cartão de crédito", "Crediário")) OutlinedTextField(
                     value = card,
                     onValueChange = { card = it },
-                    label = { Text("Cartão (opcional)") },
+                    label = { Text(if (paymentMethod == "Crediário") "Loja/crediário (opcional)" else "Nome do cartão (opcional)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -209,6 +226,8 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
                     error = "Informe o que foi comprado."
                 } else if (cents == null || cents <= 0L) {
                     error = "Informe um valor válido."
+                } else if (paymentMethod in setOf("À vista", "VR", "VM") && byParcel) {
+                    error = "Esta forma de pagamento usa o valor total."
                 } else if (n == null || n < 1 || n > 120) {
                     error = "O número de parcelas deve ser de 1 a 120."
                 } else if (cur == null || cur < 1 || cur > n) {
@@ -223,10 +242,11 @@ private fun InstallmentDialog(item: InstallmentEntity?, onDismiss: () -> Unit, o
                         base.copy(
                             description = description.trim(),
                             totalCents = if (byParcel) cents * n else cents,
-                            installments = n,
+                            installments = if (paymentMethod in setOf("À vista", "VR", "VM")) 1 else n,
                             firstYear = first.year,
                             firstMonth = first.monthValue,
                             card = card.trim().ifBlank { null },
+                            paymentMethod = paymentMethod,
                         )
                     )
                 }
@@ -273,3 +293,4 @@ private fun InvoicesCard(invoices: List<CardInvoice>, now: YearMonth) {
         }
     }
 }
+

@@ -37,14 +37,19 @@ private val Amber = Color(0xFFF5A623)
 fun SpendingCard(s: Snapshot, items: List<SpendItem>) {
     if (items.isEmpty()) return
 
-    val base = maxOf(s.incomeCents, s.spentCents).coerceAtLeast(1L)
-    val remaining = (s.incomeCents - s.spentCents).coerceAtLeast(0L)
+    val totalIncome = s.incomeCents + s.benefitIncomeCents
+    val remainingCash = (s.incomeCents - s.spentCents).coerceAtLeast(0L)
+    val remainingBenefits = (s.benefitIncomeCents - s.benefitSpentCents).coerceAtLeast(0L)
     val segments = listOf(
         Triple("Fixas", s.fixedCents, Teal),
         Triple("Variáveis", s.variableCents, Blue),
+        Triple("Acordos de dívidas", s.debtPaymentsCents, MaterialTheme.colorScheme.error),
         Triple("Parcelas", s.installmentsCents, Amber),
-        Triple("Sobra", remaining, MaterialTheme.colorScheme.surfaceVariant),
+        Triple("VR/VM usados", s.benefitSpentCents, MaterialTheme.colorScheme.tertiary),
+        Triple("Sobra em dinheiro", remainingCash, MaterialTheme.colorScheme.surfaceVariant),
+        Triple("Benefícios restantes", remainingBenefits, MaterialTheme.colorScheme.secondaryContainer),
     ).filter { it.second > 0L }
+    val base = segments.sumOf { it.second }.coerceAtLeast(1L)
 
     AppCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -81,7 +86,7 @@ fun SpendingCard(s: Snapshot, items: List<SpendItem>) {
                             modifier = Modifier.weight(1f),
                         )
                         Text(
-                            Money.format(item.cents) + if (s.incomeCents > 0L) " · ${item.cents * 100 / s.incomeCents}%" else "",
+                            Money.format(item.cents) + if (totalIncome > 0L) " · ${item.cents * 100 / totalIncome}%" else "",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
