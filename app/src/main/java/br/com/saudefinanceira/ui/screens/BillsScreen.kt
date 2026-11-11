@@ -72,7 +72,8 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 
     val now = YearMonth.now()
     val byBill = entries.groupBy { it.billId }
-    val type = if (tab == 0) BillType.FIXED else BillType.VARIABLE
+    // Abas: 0 = Ordem de pagamento (inicial), 1 = Fixas, 2 = Variáveis.
+    val type = if (tab == 2) BillType.VARIABLE else BillType.FIXED
     val list = bills.filter { it.type == type }
     val total = list.sumOf { it.amountCents }
     // Renda em dinheiro que sobra para as contas, depois de descontar parcelas e acordos de dívidas.
@@ -82,29 +83,29 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
         Column(Modifier.fillMaxSize()) {
             ScreenHeader(
                 title = when (tab) {
-                    0 -> "Contas fixas"
-                    1 -> "Contas variáveis"
-                    else -> "O que pagar primeiro"
+                    0 -> "O que pagar primeiro"
+                    1 -> "Contas que não mudam"
+                    else -> "Contas que mudam todo mês"
                 },
-                value = Money.format(if (tab == 2) availableForBills.coerceAtLeast(0L) else total),
+                value = Money.format(if (tab == 0) availableForBills.coerceAtLeast(0L) else total),
                 caption = when (tab) {
-                    0 -> "Todo mês, por tempo indeterminado"
-                    1 -> "Atualize o valor de cada conta a cada mês"
-                    else -> "Renda disponível para contas, já descontadas parcelas e acordos"
+                    0 -> "É o que sobra do seu dinheiro para pagar as contas"
+                    1 -> "Mesmo valor todo mês, como aluguel e internet"
+                    else -> "Luz, água, gás... Mude o valor quando a conta chegar"
                 },
             )
             TabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Fixas") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Variáveis") })
-                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Ordem") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Ordem") })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Fixas") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Que mudam") })
             }
-            if (tab == 2) {
-                PaymentOrderList(bills, availableForBills, snap.incomeCents > 0L)
+            if (tab == 0) {
+                PaymentOrderList(bills, availableForBills, snap.incomeCents > 0L, onEdit = { editing = it })
             } else if (list.isEmpty()) {
                 EmptyState(
-                    title = if (tab == 0) "Nenhuma conta fixa" else "Nenhuma conta variável",
-                    text = if (tab == 0) "Toque em + para adicionar aluguel, internet, assinaturas..."
-                    else "Toque em + para adicionar luz, água, gasolina, mercado...",
+                    title = if (tab == 1) "Nenhuma conta fixa" else "Nenhuma conta que muda",
+                    text = if (tab == 1) "Toque em + para adicionar aluguel, internet, assinaturas..."
+                    else "Toque em + para adicionar luz, água, gás, mercado...",
                 )
             } else {
                 LazyColumn(
@@ -125,12 +126,10 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
                 }
             }
         }
-        if (tab != 2) {
-            FloatingActionButton(
-                onClick = { creating = true },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar conta") }
-        }
+        FloatingActionButton(
+            onClick = { creating = true },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        ) { Icon(Icons.Filled.Add, contentDescription = "Adicionar conta") }
     }
 
     if (creating) {
@@ -160,11 +159,16 @@ fun BillsScreen(vm: FinanceViewModel, padding: PaddingValues) {
 }
 
 @Composable
-private fun PaymentOrderList(bills: List<BillEntity>, availableCents: Long, hasIncome: Boolean) {
+private fun PaymentOrderList(
+    bills: List<BillEntity>,
+    availableCents: Long,
+    hasIncome: Boolean,
+    onEdit: (BillEntity) -> Unit,
+) {
     if (bills.isEmpty()) {
         EmptyState(
             title = "Nenhuma conta cadastrada",
-            text = "Cadastre suas contas nas abas Fixas e Variáveis para ver em que ordem pagar.",
+            text = "Toque em + para cadastrar sua primeira conta, como aluguel ou luz.",
         )
         return
     }
@@ -177,15 +181,15 @@ private fun PaymentOrderList(bills: List<BillEntity>, availableCents: Long, hasI
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     when {
-                        !hasIncome -> "Informe sua renda na tela Início para ver até onde o dinheiro chega."
-                        plan.uncoveredCount == 0 -> "Sua renda cobre todas as contas, com ${Money.format(plan.leftoverCents)} de folga."
-                        else -> "O dinheiro cobre ${plan.coveredCount} de ${plan.steps.size} contas. Pague de cima para baixo e fale com quem cobra as que ficarem sem cobertura antes do vencimento."
+                        !hasIncome -> "Diga quanto você ganha na tela Hoje para ver até onde o dinheiro chega."
+                        plan.uncoveredCount == 0 -> "Seu dinheiro cobre todas as contas e ainda sobram ${Money.format(plan.leftoverCents)}."
+                        else -> "Seu dinheiro cobre ${plan.coveredCount} de ${plan.steps.size} contas. Pague de cima para baixo. Nas últimas, fale com quem cobra antes de vencer."
                     },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "Essenciais primeiro (moradia, luz, água, comida, transporte), depois as importantes e, por último, as que podem esperar. Mude a prioridade tocando na conta.",
+                    "As contas de cima são as que você não pode deixar de pagar (moradia, luz, água, comida). Toque numa conta para mudar o lugar dela.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -193,7 +197,7 @@ private fun PaymentOrderList(bills: List<BillEntity>, availableCents: Long, hasI
         }
         items(plan.steps.size) { index ->
             val step = plan.steps[index]
-            AppCard(Modifier.fillMaxWidth()) {
+            AppCard(Modifier.fillMaxWidth(), onClick = { onEdit(step.bill) }) {
                 Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -209,7 +213,7 @@ private fun PaymentOrderList(bills: List<BillEntity>, availableCents: Long, hasI
                         )
                         if (hasIncome) {
                             Text(
-                                if (step.covered) "✓ Dinheiro garantido" else "Faltam ${Money.format(step.missingCents)}",
+                                if (step.covered) "✓ Tem dinheiro para pagar" else "Faltam ${Money.format(step.missingCents)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (step.covered) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
@@ -403,8 +407,8 @@ private fun BillDialog(bill: BillEntity?, type: BillType, onDismiss: () -> Unit,
                     onValueChange = { amount = it; error = null },
                     label = if (type == BillType.FIXED) "Valor mensal (R$)" else "Valor deste mês (R$)",
                 )
-                NumberField(day, { day = it; error = null }, "Dia de vencimento (opcional)")
-                Text("Prioridade: o que pagar primeiro quando o dinheiro não dá para tudo", style = MaterialTheme.typography.bodySmall)
+                NumberField(day, { day = it; error = null }, "Dia que vence (se tiver)")
+                Text("Se o dinheiro faltar, quando pagar esta conta?", style = MaterialTheme.typography.bodyMedium)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     listOf(Priority.ESSENTIAL, Priority.IMPORTANT, Priority.FLEXIBLE).forEach { p ->
                         FilterChip(

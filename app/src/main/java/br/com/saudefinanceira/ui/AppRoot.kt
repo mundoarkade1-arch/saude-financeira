@@ -1,18 +1,24 @@
 package br.com.saudefinanceira.ui
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -35,7 +41,9 @@ import br.com.saudefinanceira.data.AppDatabase
 import br.com.saudefinanceira.ui.screens.BillsScreen
 import br.com.saudefinanceira.ui.screens.HomeScreen
 import br.com.saudefinanceira.ui.screens.InstallmentsScreen
+import br.com.saudefinanceira.ui.screens.MoreScreen
 import br.com.saudefinanceira.ui.screens.SettingsScreen
+import br.com.saudefinanceira.ui.screens.SummaryScreen
 import br.com.saudefinanceira.ui.screens.TipsScreen
 import br.com.saudefinanceira.ui.screens.ReportsScreen
 import br.com.saudefinanceira.ui.components.QuickGuideDialog
@@ -44,11 +52,25 @@ import br.com.saudefinanceira.update.UpdateState
 import br.com.saudefinanceira.update.UpdateViewModel
 
 enum class Dest(val route: String, val label: String, val icon: ImageVector) {
-    Home("inicio", "Início", Icons.Filled.Home),
+    Home("inicio", "Hoje", Icons.Filled.Home),
     Bills("contas", "Contas", Icons.AutoMirrored.Filled.List),
-    Installments("parcelas", "Compras", Icons.Filled.ShoppingCart),
-    Tips("dicas", "Planejar", Icons.Filled.Info),
-    Settings("ajustes", "Ajustes", Icons.Filled.Settings),
+    More("mais", "Mais", Icons.Filled.Menu),
+}
+
+/** Telas abertas a partir de "Mais" (ou de atalhos); têm botão Voltar no topo. */
+private val subRoutes = setOf("resumo", "parcelas", "dicas", "ajustes", "relatorios")
+
+private fun NavHostController.open(route: String) {
+    navigate(route) { launchSingleTop = true }
+}
+
+@Composable
+private fun BackBar(onBack: () -> Unit) {
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("← Voltar") }
+        }
+    }
 }
 
 private fun NavHostController.goTo(route: String) {
@@ -96,12 +118,20 @@ fun AppRoot(db: AppDatabase) {
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = { if (current != null && current in subRoutes) BackBar(onBack = { nav.popBackStack() }) },
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                 Dest.values().forEach { d ->
                     NavigationBarItem(
-                        selected = current == d.route,
-                        onClick = { nav.goTo(d.route) },
+                        selected = if (d == Dest.More) current != Dest.Home.route && current != Dest.Bills.route else current == d.route,
+                        onClick = {
+                            if (d == Dest.More) {
+                                nav.navigate(d.route) {
+                                    popUpTo(Dest.Home.route)
+                                    launchSingleTop = true
+                                }
+                            } else nav.goTo(d.route)
+                        },
                         icon = { Icon(d.icon, contentDescription = d.label) },
                         label = { Text(d.label) },
                     )
@@ -113,20 +143,20 @@ fun AppRoot(db: AppDatabase) {
             composable(Dest.Home.route) {
                 HomeScreen(
                     vm, padding,
-                    onOpenTips = { nav.goTo(Dest.Tips.route) },
                     pendingUpdate = pendingUpdate,
-                    updateState = updateState,
-                    onCheckUpdates = { updateVm.check(force = true) },
-                    onOpenSettings = { nav.goTo(Dest.Settings.route) },
+                    onOpenSettings = { nav.open("ajustes") },
                     onOpenBills = { nav.goTo(Dest.Bills.route) },
-                    onOpenInstallments = { nav.goTo(Dest.Installments.route) },
-                    onOpenReports = { nav.goTo("relatorios") },
+                    onOpenSummary = { nav.open("resumo") },
                 )
             }
             composable(Dest.Bills.route) { BillsScreen(vm, padding) }
-            composable(Dest.Installments.route) { InstallmentsScreen(vm, padding) }
-            composable(Dest.Tips.route) { TipsScreen(vm, padding) }
-            composable(Dest.Settings.route) { SettingsScreen(updateVm, backupVm, padding, onOpenGuide = { showGuide = true }) }
+            composable(Dest.More.route) { MoreScreen(padding, onOpen = { nav.open(it) }) }
+            composable("resumo") {
+                SummaryScreen(vm, padding, onOpenTips = { nav.open("dicas") }, onOpenReports = { nav.open("relatorios") })
+            }
+            composable("parcelas") { InstallmentsScreen(vm, padding) }
+            composable("dicas") { TipsScreen(vm, padding) }
+            composable("ajustes") { SettingsScreen(updateVm, backupVm, padding, onOpenGuide = { showGuide = true }) }
             composable("relatorios") { ReportsScreen(vm, padding) }
         }
     }

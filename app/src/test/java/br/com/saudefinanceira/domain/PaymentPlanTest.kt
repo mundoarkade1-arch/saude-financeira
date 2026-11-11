@@ -60,7 +60,7 @@ class PaymentPlanTest {
         val s = Snapshot(incomeCents = 150_000, fixedCents = 94_000, variableCents = 0, installmentsCents = 20_000)
         val split = SalarySplitCalc.compute(bills.filter { it.name != "Luz" }, s, 4_000)
         assertEquals(
-            listOf("Contas essenciais", "Contas importantes", "Contas que podem esperar", "Parcelas", "Reserva mínima"),
+            listOf("Pagar primeiro", "Pagar depois", "Pode atrasar um pouco", "Parcelas", "Guardar um pouquinho"),
             split.parts.map { it.label },
         )
         assertEquals(80_000, split.parts[0].cents)

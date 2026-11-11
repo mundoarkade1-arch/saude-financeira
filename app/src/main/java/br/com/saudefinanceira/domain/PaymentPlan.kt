@@ -8,9 +8,9 @@ object Priority {
     const val FLEXIBLE = 2
 
     fun label(priority: Int): String = when (priority) {
-        ESSENTIAL -> "Essencial"
-        FLEXIBLE -> "Pode esperar"
-        else -> "Importante"
+        ESSENTIAL -> "Pagar primeiro"
+        FLEXIBLE -> "Pode atrasar um pouco"
+        else -> "Pagar depois"
     }
 
     private val essentialWords = listOf(
@@ -75,12 +75,12 @@ object SalarySplitCalc {
         fun sum(priority: Int) = bills.filter { it.priority == priority }.sumOf { it.amountCents }
         val reserve = reserveCents.coerceAtLeast(0L)
         val parts = listOf(
-            SplitPart("Contas essenciais", sum(Priority.ESSENTIAL)),
-            SplitPart("Contas importantes", sum(Priority.IMPORTANT)),
-            SplitPart("Contas que podem esperar", sum(Priority.FLEXIBLE)),
+            SplitPart("Pagar primeiro", sum(Priority.ESSENTIAL)),
+            SplitPart("Pagar depois", sum(Priority.IMPORTANT)),
+            SplitPart("Pode atrasar um pouco", sum(Priority.FLEXIBLE)),
             SplitPart("Parcelas", snapshot.installmentsCents),
-            SplitPart("Acordos de dívidas", snapshot.debtPaymentsCents),
-            SplitPart("Reserva mínima", reserve),
+            SplitPart("Acordos de dívida", snapshot.debtPaymentsCents),
+            SplitPart("Guardar um pouquinho", reserve),
         ).filter { it.cents > 0L }
         return SalarySplit(parts, snapshot.incomeCents - parts.sumOf { it.cents })
     }
